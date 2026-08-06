@@ -15,6 +15,7 @@ import {
   parseDate,
   parseMonthDay,
   rollForwardOffWeekend,
+  rollBackwardOffWeekend,
 } from "./calendar.js";
 import type { CalendarDate, EntityFacts } from "./facts.js";
 import { isConditionGroup } from "./rule.js";
@@ -392,7 +393,35 @@ function occurrenceInYear(
 }
 
 function applyWeekendRule(rule: Rule, date: CalendarDate): CalendarDate {
-  return rule.weekendRule === "roll-forward"
-    ? rollForwardOffWeekend(date)
-    : date;
+  // An explicit switch rather than a ternary chain, and no `default` that
+  // silently returns the date. A rule carrying a direction this engine does not
+  // know is the `formation-anniversary` failure again — an unknown value
+  // falling through a switch produced no obligations at all, silently, and a
+  // clean calendar with filings missing from it is worse than a wrong date.
+  // Here the type makes an unknown value unreachable; the exhaustive `never`
+  // is what keeps that true when a third direction is added.
+  switch (rule.weekendRule) {
+    case "roll-forward":
+      return rollForwardOffWeekend(date);
+    case "roll-backward":
+      return rollBackwardOffWeekend(date);
+    case undefined:
+      // Not "no opinion" — a deliberate statement that this rule's agency has
+      // not said a weekend deadline moves, so we do not move it on their behalf.
+      return date;
+    default: {
+      // The exhaustiveness check the comment above promised, and TypeScript
+      // caught its absence: without it the switch has no ending return and a
+      // future third direction would fall through returning `undefined`.
+      //
+      // `never` rather than a thrown error at runtime, because the failure to
+      // prevent is a rule pack carrying a direction this engine version does
+      // not know — and that must be a COMPILE error here, not a silent
+      // un-rolled date in production. Returning the date unchanged would be the
+      // `formation-anniversary` failure again: an unknown value handled
+      // quietly, producing a wrong deadline that looks like a considered one.
+      const unknown: never = rule.weekendRule;
+      throw new Error(`Unknown weekendRule: ${String(unknown)}`);
+    }
+  }
 }

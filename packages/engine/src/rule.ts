@@ -197,7 +197,21 @@ export interface Rule {
   effectiveTo?: CalendarDate;
   /** The rule that replaced this one, for a superseded rule. */
   supersededBy?: string;
-  /** Opt-in weekend rolling. See `rollForwardOffWeekend` for why it is opt-in. */
-  weekendRule?: "roll-forward";
+  /**
+   * Opt-in weekend rolling, and the DIRECTION is part of the opt-in.
+   *
+   * `roll-forward` — the deadline moves to the next business day. The IRS says
+   * this explicitly for the 990 family.
+   *
+   * `roll-backward` — the deadline moves to the previous business day. This is
+   * what an agency means when it asks for the last business day *of a period*
+   * rather than the next business day *after a date*: WAC 434-120-140(2)(a)
+   * wants Washington's charities renewal "no later than the last business day
+   * of the eleventh month".
+   *
+   * Neither is a default and there is no third option meaning "guess". See
+   * `rollOffWeekend` for why.
+   */
+  weekendRule?: "roll-forward" | "roll-backward";
   notes?: string;
 }

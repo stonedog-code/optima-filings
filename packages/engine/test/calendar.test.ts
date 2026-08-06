@@ -14,6 +14,7 @@ import {
   parseDate,
   parseMonthDay,
   rollForwardOffWeekend,
+  rollBackwardOffWeekend,
 } from "../src/calendar.js";
 
 describe("parseDate", () => {
@@ -154,5 +155,39 @@ describe("parseMonthDay", () => {
 
   it.each(["6-30", "2026-06-30", ""])("rejects %s", (input) => {
     expect(() => parseMonthDay(input)).toThrow(RangeError);
+  });
+});
+
+describe("rollBackwardOffWeekend", () => {
+  // The mirror of its twin, for an agency that asks for the last business day
+  // OF A PERIOD rather than the next business day AFTER a date.
+  it("moves a Saturday back one day, to Friday", () => {
+    expect(rollBackwardOffWeekend("2026-08-01")).toBe("2026-07-31");
+  });
+
+  it("moves a Sunday back two days, to Friday", () => {
+    expect(rollBackwardOffWeekend("2026-08-02")).toBe("2026-07-31");
+  });
+
+  it("leaves a weekday alone", () => {
+    expect(rollBackwardOffWeekend("2026-08-03")).toBe("2026-08-03");
+  });
+
+  it("crosses a month boundary, and a year boundary", () => {
+    // 1 August is a Saturday, so the answer is in July — the case a naive
+    // implementation clamping within the month would get wrong.
+    expect(rollBackwardOffWeekend("2026-08-01")).toBe("2026-07-31");
+    // 1 January 2028 is a Saturday.
+    expect(rollBackwardOffWeekend("2028-01-01")).toBe("2027-12-31");
+  });
+
+  it("is the opposite of rolling forward, on the same input", () => {
+    // Stated as a relationship, because the whole defect was picking the wrong
+    // one of the two. If these ever agree on a weekend date, one is broken.
+    for (const weekend of ["2026-08-01", "2026-08-02"]) {
+      expect(rollBackwardOffWeekend(weekend)).not.toBe(rollForwardOffWeekend(weekend));
+      expect(rollBackwardOffWeekend(weekend) < weekend).toBe(true);
+      expect(rollForwardOffWeekend(weekend) > weekend).toBe(true);
+    }
   });
 });

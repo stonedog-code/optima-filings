@@ -333,8 +333,8 @@
       "description": "Id of the rule that replaced this one."
     },
     "weekendRule": {
-      "const": "roll-forward",
-      "description": "Opt in only where the statute or agency actually says a weekend deadline moves. Rolling by default would invent a legal position the rule never claimed."
+      "enum": ["roll-forward", "roll-backward"],
+      "description": "Opt in only where the statute or agency actually says a weekend deadline moves, and pick the direction the statute states. Rolling by default, or guessing the direction, would invent a legal position the rule never claimed. roll-forward: the IRS moves a weekend due date to the next business day. roll-backward: an agency asking for the last business day OF A PERIOD, such as WAC 434-120-140(2)(a), moves it earlier."
     },
     "notes": {
       "type": "string",
