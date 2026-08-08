@@ -2,7 +2,7 @@
 
 **Repo tier.** Project-wide context (the open-core boundary, ownership and the
 CLA, the rule contract, the design system, cross-repo ordering) is in
-`~/src/optima/CLAUDE.md`. Machine-wide conventions are in
+`~/src/stonedogcode/optima/CLAUDE.md`. Machine-wide conventions are in
 `~/.claude/CLAUDE.md`. This file covers only what's true inside this repo.
 
 **This repo is public.** Every commit, comment, and branch name is visible to
@@ -238,6 +238,11 @@ rules that were *always* wrong.
    will actually break, and all three are already in the fixture entities.
 5. `npm run gate` — validation, barrel freshness, typecheck, lint, tests.
 
+**`npm run gate` is the merge bar for a rule PR.** Maintainers sequence
+verification as its own bulk pass rather than blocking a green PR on it, so do
+not wait on a citation review to merge. The sequencing itself is a maintainer
+decision and lives outside this repo.
+
 ## Testing
 
 Rule data has no compiler to catch it, so **the fixture suite is the only thing
@@ -341,9 +346,10 @@ of self-hosters are on ARM boxes and Pis.
 - For those who do open PRs: optimize the authoring guide for copy-paste — take
   a neighbouring rule, change three fields, submit. Any friction here is friction
   on the one thing the project can't buy.
-- Review rule PRs on **the citation and the dates**, not on style. A formatter
-  handles style; only a human can check that RCW 24.03A.075 says what the JSON
-  claims.
+- Review rule PRs on **the citation and the dates**, not on style — a formatter
+  handles style, and only a human can check that RCW 24.03A.075 says what the
+  JSON claims. **But do not block a green PR on that review**; it is sequenced
+  as its own pass, per "Adding or changing a rule" above.
 
 ## Not legal advice
 
