@@ -1,6 +1,6 @@
 {
   "name": "@optima-compliance/rules",
-  "version": "2026.8.6",
+  "version": "2026.8.7",
   "description": "Crowd-maintained US business compliance rule packs. Every rule cites its statute.",
   "license": "AGPL-3.0-only",
   "author": "StoneDogCode L.L.C.",
