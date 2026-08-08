@@ -68,6 +68,7 @@ export {
   parseDate,
   parseMonthDay,
   rollForwardOffWeekend,
+  rollBackwardOffWeekend,
 } from "./calendar.js";
 export type { DateParts } from "./calendar.js";
 export {

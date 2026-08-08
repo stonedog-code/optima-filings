@@ -149,6 +149,35 @@ export const ENDOWED_NON_SOLICITING_CHARITY: EntityFacts = {
   solicitsCharitableContributions: false,
 };
 
+/**
+ * A soliciting charity whose accounting year ends 30 June.
+ *
+ * Exists for one reason: at +11 months its Washington renewal lands on
+ * **2026-05-31, a Sunday**, which is the only way to test that the deadline
+ * rolls BACKWARD to Friday 29 May rather than forward to Monday 1 June.
+ *
+ * A Sunday rather than a Saturday deliberately. Saturday distinguishes the two
+ * directions by three days; Sunday exercises the -2 branch and still lands on a
+ * different day under each, so a fixture that passed under the wrong
+ * implementation is impossible. The repo has been caught by the opposite
+ * before: every Oregon fixture was formed on the 31st, so `formation-month` and
+ * `formation-anniversary` agreed and the whole suite endorsed the wrong anchor.
+ *
+ * A June year end is also just common for nonprofits, so this is a real
+ * organisation shape rather than a date chosen to make a test go green.
+ */
+export const JUNE_YEAR_END_SOLICITING_CHARITY: EntityFacts = {
+  name: "Example Cascade Watershed Alliance",
+  entityTypes: ["501c3", "nonprofit-corp"],
+  formedOn: "2011-09-14",
+  homeJurisdiction: "US-WA",
+  jurisdictions: ["US", "US-WA"],
+  fiscalYearEnd: "06-30",
+  grossRevenueMinorUnits: 1_200_000,
+  totalAssetsMinorUnits: 4_000_000,
+  solicitsCharitableContributions: true,
+};
+
 /** A charity that has not told us its revenue. Drives the indeterminate path. */
 export const CHARITY_WITHOUT_REVENUE: EntityFacts = {
   name: "Example Olympic Literacy Project",

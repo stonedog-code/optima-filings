@@ -18,6 +18,7 @@ import type { Rule } from "../src/rule.js";
 import {
   DE_CORP,
   ENDOWED_NON_SOLICITING_CHARITY,
+  JUNE_YEAR_END_SOLICITING_CHARITY,
   OR_CORP_LEAP_DAY,
   OR_LLC,
   OR_NONPROFIT_MID_MONTH,
@@ -493,13 +494,52 @@ describe("what the primary sources actually say", () => {
     }
   });
 
-  it("does not roll a state report forward, because no state source says to", () => {
-    // The other half of the same discipline, and the reason this test exists:
-    // an "add it everywhere while I'm here" tidy-up would be a silent legal
-    // claim about five agencies that none of them made.
-    for (const rule of RULES.filter((r) => r.jurisdiction !== "US")) {
+  it("rolls the WA charities renewal BACKWARD, because WAC says last business day", () => {
+    // The opposite direction, and it is not a preference. WAC 434-120-140(2)(a)
+    // asks for the renewal "no later than the last business day OF the eleventh
+    // month" — the last business day of a period, not the next business day
+    // after a date. So a period ending on a Saturday means the Friday before.
+    expect(byId("us-wa-charitable-solicitation-registration").weekendRule).toBe(
+      "roll-backward",
+    );
+  });
+
+  it("leaves every OTHER state rule alone, because no other state source says to", () => {
+    // NARROWED, not deleted. This assertion existed to stop an "add it
+    // everywhere while I'm here" tidy-up making a silent legal claim on behalf
+    // of five agencies, and that risk is unchanged — one rule now has a source
+    // that says so, and the rest still do not.
+    //
+    // Listing the exception by id rather than filtering it out by predicate:
+    // a second rule quietly acquiring a weekend rule has to be added here by
+    // hand, which is the moment somebody asks what statute says so.
+    const WITH_A_SOURCE = new Set(["us-wa-charitable-solicitation-registration"]);
+    for (const rule of RULES.filter(
+      (r) => r.jurisdiction !== "US" && !WITH_A_SOURCE.has(r.id),
+    )) {
       expect(rule.weekendRule).toBeUndefined();
     }
+  });
+
+  it("moves a Sunday deadline to the FRIDAY BEFORE, not the Monday after", () => {
+    // The bug this fixes: `dayOfMonth: "last"` gives the last CALENDAR day, so
+    // a period ending on a weekend showed a date up to two days LATE — the
+    // direction that costs somebody a late fee.
+    //
+    // 30 June year end + 11 months = 31 May 2026, a Sunday. Asserted against
+    // all three candidate dates, because the point is which one it is: the
+    // uncorrected 31st, the wrong-direction 1st, or the right answer.
+    const result = evaluate(JUNE_YEAR_END_SOLICITING_CHARITY, RULES, {
+      asOf: "2026-01-01",
+      horizonMonths: 12,
+      includeDraft: true,
+    });
+    const renewal = result.obligations.find(
+      (o) => o.ruleId === "us-wa-charitable-solicitation-registration",
+    );
+    expect(renewal?.dueOn).toBe("2026-05-29"); // Friday
+    expect(renewal?.dueOn).not.toBe("2026-05-31"); // Sunday — the old behaviour
+    expect(renewal?.dueOn).not.toBe("2026-06-01"); // Monday — rolled the wrong way
   });
 });
 

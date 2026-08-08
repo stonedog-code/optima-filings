@@ -157,3 +157,26 @@ export function rollForwardOffWeekend(date: CalendarDate): CalendarDate {
   if (dow === 0) return addDays(date, 1);
   return date;
 }
+
+/**
+ * The previous business day, for an agency that wants the last business day
+ * **of a period**.
+ *
+ * The distinction from rolling forward is not a preference, it is what the
+ * statute says. WAC 434-120-140(2)(a) asks for Washington's charities renewal
+ * "no later than the **last business day** of the eleventh month" — so when
+ * the eleventh month ends on a Saturday, the deadline is the Friday **before**,
+ * not the Monday after. Rolling the wrong way makes the product show a date up
+ * to two days LATE, which is the direction that costs somebody a late fee.
+ *
+ * Same holiday caveat as its twin: a deadline landing on a legal holiday is
+ * still wrong under both, and a half-right holiday implementation would be
+ * worse than none because nothing in the output would say which dates it got
+ * right.
+ */
+export function rollBackwardOffWeekend(date: CalendarDate): CalendarDate {
+  const dow = dayOfWeek(date);
+  if (dow === 6) return addDays(date, -1);
+  if (dow === 0) return addDays(date, -2);
+  return date;
+}

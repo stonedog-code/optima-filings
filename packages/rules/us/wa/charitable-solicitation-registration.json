@@ -25,6 +25,7 @@
       "value": true
     }
   ],
+  "weekendRule": "roll-backward",
   "citation": "RCW 19.09.075; RCW 19.09.085; WAC 434-120-140(2)(a); WAC 434-120-042",
   "citationUrl": "https://app.leg.wa.gov/wac/default.aspx?cite=434-120-140",
   "agencyUrl": "https://www.sos.wa.gov/corporations-charities/charities",
