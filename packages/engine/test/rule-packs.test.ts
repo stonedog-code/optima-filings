@@ -146,8 +146,21 @@ describe("a small Washington charity", () => {
      * place.
      *
      * A test that asserted the old value was part of what made it look
-     * verified. Restore a figure here only when a person has read the SOS fee
-     * schedule and the schema can express the revenue condition — see NEH-402.
+     * verified.
+     *
+     * UPDATED 2026-08-08 (NEH-402): the fee schedule HAS now been read, and the
+     * structure is not the "$60 reduced to $20" assumed above. WAC
+     * 434-112-085(8)(m) sets the annual report at "Ten dollars, plus the
+     * Charitable Asset Protection Account fee", and RCW 24.03A.960(2)(b) sets
+     * that fee at "fifty dollars per year, reduced to ten dollars if the
+     * corporation certifies that its total gross revenue in the most recent
+     * fiscal year was less than five hundred thousand dollars" — so $20 or $60,
+     * as a base plus a conditional surcharge, turning on the corporation
+     * CERTIFYING rather than on the revenue fact alone.
+     *
+     * The reasoning for showing nothing is unchanged and now better evidenced.
+     * The remaining blocker is only the schema, which cannot express any of
+     * this — see NEH-403. Restore a figure here when it can, not before.
      */
     expect(report?.feeMinorUnits).toBeUndefined();
   });
@@ -371,8 +384,9 @@ describe("an endowed Washington charity that does not solicit", () => {
 });
 
 /**
- * Amounts and citations checked against the primary source on 2026-08-05, with
- * the exact quote in each rule's `notes`.
+ * Amounts and citations checked against the primary source on 2026-08-05 and
+ * again on 2026-08-08 (Washington), with the exact quote in each rule's
+ * `notes`.
  *
  * These are here because a fee is a plain number in a JSON file, and a plain
  * number is the easiest thing in this repo to "tidy" back to a wrong value
@@ -380,9 +394,10 @@ describe("an endowed Washington charity that does not solicit", () => {
  * commit, and one of them (Delaware) had a note *asking* for exactly this
  * check. A number nobody asserts is a number that drifts back.
  *
- * Deliberately NOT a claim that the rules are verified: they are all still
- * `draft`, because promotion means a person read the statute. This pins what
- * the reading found so far.
+ * Deliberately NOT a claim that every rule is verified. The set was promoted to
+ * `active` in pack `2026.8.6`, so `status` no longer distinguishes what has been
+ * read from what has not; each rule's `notes` and `lastVerified` do. This pins
+ * what the reading found so far.
  */
 describe("what the primary sources actually say", () => {
   it("charges $400 for the Delaware LLC annual tax, not $300", () => {
@@ -409,6 +424,52 @@ describe("what the primary sources actually say", () => {
     const rule = byId("us-wa-sos-nonprofit-annual-report");
     expect(rule.citation).toContain("24.03A.070");
     expect(rule.citation).not.toContain("24.03A.1010");
+  });
+
+  it("charges $70 for a Washington profit corporation or LLC annual report, not $60", () => {
+    // WAC 434-112-085(7)(p): "Annual report Seventy dollars", for entities
+    // under Title 23B RCW and chapters 23.78, 23.86, 25.05, 25.10 and 25.15
+    // RCW. The SOS fee schedule agrees and states the increase from $60
+    // outright, citing the same subsection.
+    //
+    // $60 was in the seed, was flagged "PROBABLY WRONG" on 2026-08-05, and was
+    // then REMOVED rather than corrected, because the only evidence against it
+    // was a search summary. It is corrected now because the regulation itself
+    // was read. Both rules, because they take the fee from one subsection and
+    // a future edit that fixes one will look complete.
+    for (const id of [
+      "us-wa-sos-corporation-annual-report",
+      "us-wa-sos-llc-annual-report",
+    ]) {
+      expect(byId(id).fee?.amountMinorUnits).toBe(7_000);
+    }
+  });
+
+  it("cites the regulation that actually sets the Washington due date", () => {
+    // Every Washington annual-report rule uses `formation-month` +
+    // `dayOfMonth: last`, and until now nothing in the pack said where that
+    // came from: RCW 23.95.255(4) delegates the date to the secretary of
+    // state, so the STATUTE deliberately does not fix it. That left the
+    // product's most-read date resting on an uncited reading of agency
+    // practice.
+    //
+    // WAC 434-112-060(1) is where the secretary set it — "by the last day of
+    // the month that the entity was formed or registered by the division" —
+    // and RCW 23.95.105(6) is what makes it reach corporations, LLCs and
+    // nonprofits alike. Asserted on all three so that dropping the citation
+    // while leaving the cadence in place fails here.
+    for (const id of [
+      "us-wa-sos-corporation-annual-report",
+      "us-wa-sos-llc-annual-report",
+      "us-wa-sos-nonprofit-annual-report",
+    ]) {
+      const rule = byId(id);
+      expect(rule.citation).toContain("WAC 434-112-060");
+      expect(rule.cadence).toMatchObject({
+        anchor: "formation-month",
+        dayOfMonth: "last",
+      });
+    }
   });
 
   it("does not cite the commercial fund-raiser section for a charity's own renewal", () => {
