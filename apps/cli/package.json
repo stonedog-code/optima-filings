@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@optima-compliance/engine": "0.4.0",
-    "@optima-compliance/rules": "2026.8.5",
+    "@optima-compliance/rules": "2026.8.6",
     "@optima-compliance/export": "0.1.0"
   },
   "engines": {

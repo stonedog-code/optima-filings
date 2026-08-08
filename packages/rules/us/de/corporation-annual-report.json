@@ -15,15 +15,11 @@
     "month": 3,
     "day": 1
   },
-  "fee": {
-    "amountMinorUnits": 5000,
-    "currency": "USD"
-  },
   "citation": "8 Del. C. 502",
   "citationUrl": "https://delcode.delaware.gov/title8/c001/sc15/index.html",
   "agencyUrl": "https://corp.delaware.gov/paytaxes/",
   "lastVerified": "2026-08-01",
-  "status": "draft",
+  "status": "active",
   "effectiveFrom": "2020-01-01",
-  "notes": "DUE DATE VERIFIED 2026-08-05, 8 Del. C. 502(a) VERBATIM: \"Annually on or before March 1, every corporation now existing or hereafter incorporated under Chapter 1 of this title ... shall make an annual franchise tax report to the Secretary of State.\" The fixed 1 March calendar date is right. FEE IS THE REPORT FEE ONLY, AND ITS SOURCE WAS NOT FOUND — 8 Del. C. 502 sets the deadline but no filing fee, and the fee section was not located in the chapter read. The $50 here is unverified. THE REAL COST IS THE FRANCHISE TAX, AND IT DWARFS THIS. 8 Del. C. 503 VERBATIM: the tax is \"more than $200,000 nor less than $175\" by the authorised-shares method, or \"more than $200,000 nor less than $400\" by assumed-par-value. So the MINIMUM real cost is at least 3.5x the figure shown and the maximum is 4000x it. The schema has no way to express a computed fee, and presenting $50 as the total would badly understate what a corporation actually owes. Do not promote until either the schema supports computed fees or the UI surfaces these notes. 502(c) also imposes a $200 penalty for a late report."
+  "notes": "DUE DATE VERIFIED 2026-08-05, 8 Del. C. 502(a) VERBATIM: \"Annually on or before March 1, every corporation now existing or hereafter incorporated under Chapter 1 of this title ... shall make an annual franchise tax report to the Secretary of State.\" The fixed 1 March calendar date is right. FEE IS THE REPORT FEE ONLY, AND ITS SOURCE WAS NOT FOUND \u2014 8 Del. C. 502 sets the deadline but no filing fee, and the fee section was not located in the chapter read. The $50 here is unverified. THE REAL COST IS THE FRANCHISE TAX, AND IT DWARFS THIS. 8 Del. C. 503 VERBATIM: the tax is \"more than $200,000 nor less than $175\" by the authorised-shares method, or \"more than $200,000 nor less than $400\" by assumed-par-value. So the MINIMUM real cost is at least 3.5x the figure shown and the maximum is 4000x it. The schema has no way to express a computed fee, and presenting $50 as the total would badly understate what a corporation actually owes. Do not promote until either the schema supports computed fees or the UI surfaces these notes. 502(c) also imposes a $200 penalty for a late report. PROMOTED TO ACTIVE 2026-08-08 by owner decision: the initial set is approved as-is, and confirmation will be required for new rules and for updates from here on. FEE REMOVED on promotion: the $50 recorded here was the report fee only and its source was never found, while 8 Del. C. 503 sets the franchise tax at a $175/$400 minimum and a $200,000 maximum \u2014 so the figure understated the real cost by 3.5x to 4000x. An absent fee sends a filer to the agency's own page; a wrong one sends them to the wrong bank. Restore a fee only when the schema can express a computed one."
 }

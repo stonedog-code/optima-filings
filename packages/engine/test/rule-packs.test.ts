@@ -128,7 +128,28 @@ describe("a small Washington charity", () => {
       (o) => o.ruleId === "us-wa-sos-nonprofit-annual-report",
     );
     expect(report?.dueOn).toBe("2026-03-31");
-    expect(report?.feeMinorUnits).toBe(6000);
+
+    /**
+     * NO FEE, and that is the assertion rather than an omission.
+     *
+     * This used to pin `6000` — $60, read off search results attributed to
+     * sos.wa.gov and never confirmed by a person. The rule's own notes said as
+     * much, and said more: the figure drops to **$20** for a nonprofit whose
+     * gross revenue was under $500,000, which describes most of this project's
+     * customers. The schema cannot express that conditional, so any single
+     * number is wrong for one group or the other — and the group $60 overstates
+     * by 3x is the larger one.
+     *
+     * The fee was removed when the rule was promoted to `active`, so the screen
+     * shows the deadline and sends the filer to the agency's page for the
+     * amount. An absent fee costs a click; a wrong one sends money to the wrong
+     * place.
+     *
+     * A test that asserted the old value was part of what made it look
+     * verified. Restore a figure here only when a person has read the SOS fee
+     * schedule and the schema can express the revenue condition — see NEH-402.
+     */
+    expect(report?.feeMinorUnits).toBeUndefined();
   });
 
   it("owes the 990-N, not the full 990", () => {

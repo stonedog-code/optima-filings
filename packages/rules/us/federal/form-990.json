@@ -2,7 +2,7 @@
   "$schema": "../../schema/rule.v1.json",
   "id": "us-federal-form-990",
   "jurisdiction": "US",
-  "title": "Form 990 — Return of Organization Exempt From Income Tax",
+  "title": "Form 990 \u2014 Return of Organization Exempt From Income Tax",
   "agency": "Internal Revenue Service",
   "entityTypes": [
     "501c3"
@@ -34,8 +34,8 @@
   "citationUrl": "https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title26-section6033",
   "agencyUrl": "https://www.irs.gov/forms-pubs/about-form-990",
   "lastVerified": "2026-08-01",
-  "status": "draft",
+  "status": "active",
   "effectiveFrom": "2020-01-01",
-  "notes": "DUE DATE VERIFIED 2026-08-05 against irs.gov: the annual return is due the 15th day of the 5th month after the tax year ends — 15 May for a calendar-year filer, which this cadence produces. WEEKEND RULE ADDED: the IRS states \"If a due date falls on a Saturday, Sunday, or legal holiday, the due date is delayed until the next business day.\" This is opted into explicitly because the agency says it, not assumed. It matters concretely: 15 May 2027 is a Saturday, so without it a calendar-year filer is shown a date two days before the real deadline. Federal legal holidays are not modelled, so a deadline landing on one is still off. THRESHOLDS VERIFIED, verbatim from the IRS filing-thresholds table: \"Gross receipts >= $200,000, or Total assets >= $500,000\". The anyOf and both gte operators match exactly. CITATION URL RETARGETED 2026-08-05: it pointed at the same IRS page as agencyUrl, which made the two fields one field wearing two names. The citation is 26 U.S.C. 6033, so it now links the STATUTE (uscode.house.gov, official) while agencyUrl keeps the IRS page a filer actually uses. The distinction matters most here: the IRS page is where the current thresholds live, and the statute is what a reviewer checks the rule against.",
+  "notes": "DUE DATE VERIFIED 2026-08-05 against irs.gov: the annual return is due the 15th day of the 5th month after the tax year ends \u2014 15 May for a calendar-year filer, which this cadence produces. WEEKEND RULE ADDED: the IRS states \"If a due date falls on a Saturday, Sunday, or legal holiday, the due date is delayed until the next business day.\" This is opted into explicitly because the agency says it, not assumed. It matters concretely: 15 May 2027 is a Saturday, so without it a calendar-year filer is shown a date two days before the real deadline. Federal legal holidays are not modelled, so a deadline landing on one is still off. THRESHOLDS VERIFIED, verbatim from the IRS filing-thresholds table: \"Gross receipts >= $200,000, or Total assets >= $500,000\". The anyOf and both gte operators match exactly. CITATION URL RETARGETED 2026-08-05: it pointed at the same IRS page as agencyUrl, which made the two fields one field wearing two names. The citation is 26 U.S.C. 6033, so it now links the STATUTE (uscode.house.gov, official) while agencyUrl keeps the IRS page a filer actually uses. The distinction matters most here: the IRS page is where the current thresholds live, and the statute is what a reviewer checks the rule against. PROMOTED TO ACTIVE 2026-08-08 by owner decision: the initial set is approved as-is, and confirmation will be required for new rules and for updates from here on.",
   "weekendRule": "roll-forward"
 }
