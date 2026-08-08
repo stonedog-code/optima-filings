@@ -1,14 +1,22 @@
 # Running Optima Filings yourself
 
+Build the image from this repository, then run it:
+
 ```bash
+docker build -t optima-filings -f docker/Dockerfile .
+
 docker run -d \
   --name optima \
   -p 3000:3000 \
   -v optima-data:/data \
-  ghcr.io/jesse-stonedog/optima-filings:latest
+  optima-filings
 ```
 
 Then open <http://localhost:3000>.
+
+There is no prebuilt image to pull. Building from source is the supported way
+to run this, and it is the same Dockerfile the project uses itself — so what
+you run is what is in the tree you checked out.
 
 ## The volume is not optional
 
@@ -61,11 +69,12 @@ question entirely.
 ## Upgrading
 
 Pull the new image and recreate the container. Migrations run automatically on
-startup — there is no separate migrate command, on purpose, because "pull and
-restart" is the whole upgrade workflow for this tier.
+startup — there is no separate migrate command, on purpose, because "rebuild
+and restart" is the whole upgrade workflow for this tier.
 
 ```bash
-docker pull ghcr.io/jesse-stonedog/optima-filings:latest
+git pull
+docker build -t optima-filings -f docker/Dockerfile .
 docker rm -f optima && docker run -d ... # same flags as above
 ```
 
@@ -82,7 +91,7 @@ docker run -d \
   --name optima \
   -p 3000:3000 \
   -v maximus-data:/data \        # your existing volume, not a new one
-  ghcr.io/jesse-stonedog/optima-filings:latest
+  optima-filings
 ```
 
 On first start the app renames `maximus.sqlite` (and its write-ahead log) to
