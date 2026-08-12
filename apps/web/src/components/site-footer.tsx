@@ -68,6 +68,21 @@ export function SiteFooter() {
         </a>
         .
       </span>
+      {/*
+        NEH-240. A RELATIVE link, deliberately: the terms ship inside this
+        application, so a self-hoster with no route to the internet can still
+        read the terms governing the software in front of them. Pointing at
+        GitHub would put a document they may not be able to open in the one
+        place they might go looking for it.
+
+        In the footer rather than beside every deadline — the opposite of
+        `Disclaimer`, and for the reason that component's own note gives. A
+        caveat that qualifies an answer belongs next to the answer; a document
+        somebody goes looking for belongs where documents are kept.
+      */}
+      <span>
+        <a href="/terms">Terms of Use</a>
+      </span>
     </footer>
   );
 }
