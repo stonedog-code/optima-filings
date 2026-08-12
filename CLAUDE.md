@@ -357,6 +357,37 @@ The README, the dashboard, and the CLI all carry it, and it is not a footer
 afterthought — this software tells people when to file with the government.
 See the project file.
 
+### Terms of Use — and deliberately not a Terms of Service (NEH-240)
+
+`apps/web/src/content/terms.ts`, rendered at `/terms`, linked from the footer.
+
+There is no service here: no account, no data leaving the machine. The AGPL
+governs the code and `Disclaimer` governs the advice, so a full ToS would invent
+obligations rather than limit them. This covers the one gap the licence arguably
+leaves — **reliance on the compliance data**. AGPL §15–17 disclaim warranty for
+*the Program*, and "the software has a bug" is a different claim from "the
+deadline you published was wrong".
+
+Four things `apps/web/test/terms.test.ts` holds in place, and each is there
+because it is the kind of sentence that drifts into a legal document unnoticed:
+
+- **No trademark claim.** Same ban the footer is under (NEH-371/NEH-199), and a
+  terms page is exactly where `Optima Filings®` would appear without thought.
+- **No insurance, certification or audit claim.** E&O is an open decision; until
+  it is made, the document must not imply cover.
+- **No account, no server, no data we hold.** That vocabulary belongs to the
+  hosted tier. The assertion exists so this document cannot quietly become the
+  other one by copy-paste.
+- **The agency wins a disagreement.** The product's honest position. A terms
+  page that reversed it would be the more dangerous document, because it reads
+  as more protective.
+
+**It ships inside the app rather than as a root `TERMS.md`** — one canonical
+copy, and it works with no network, which is the situation a self-hoster is in.
+
+**It has not been reviewed by a lawyer.** Written to be narrow enough to be safe
+while unreviewed rather than broad enough to look impressive.
+
 ## AGPL hygiene
 
 - Keep `LICENSE` (AGPLv3) at the root, unmodified.
