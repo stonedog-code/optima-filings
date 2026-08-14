@@ -151,6 +151,66 @@ case "$PACKAGE_KIND" in
     ENGINE_LOCAL="$(node -p "require('./packages/engine/package.json').version")"
     [ "$ENGINE_PIN" = "$ENGINE_LOCAL" ] \
       || fail "$PACKAGE_KIND pins engine@$ENGINE_PIN but this repo builds engine@$ENGINE_LOCAL. The workspace link hides that difference locally and consumers get the pinned one — move the pin, or publish a matching engine."
+
+    # -----------------------------------------------------------------------
+    # And that the pinned engine is the engine this repo builds BY CONTENT, not
+    # by version string — NEH-708.
+    #
+    # The two checks above both passed while `rules@2026.8.7` was published
+    # against an engine that could not run it. The pin said 0.4.0, the registry
+    # had 0.4.0, and `packages/engine/package.json` said 0.4.0 — three matching
+    # strings. But the engine's SOURCE had gained features across two merged
+    # PRs (NEH-404, NEH-443) without either bumping its version, so the built
+    # engine here and the tarball on npm were different code wearing one number.
+    #
+    # The consequence is silent: npm resolves cleanly, nothing errors, and the
+    # rules that need the new engine evaluate as though they had never asked.
+    # `roll-backward` fell through to "leave the date alone" and put a Washington
+    # deadline on a SUNDAY; `holidayCalendar` was ignored and put a federal one
+    # on MLK Day.
+    #
+    # So: fetch the pinned tarball and compare its dist against the local build.
+    # A version string cannot express "same code" and was never able to.
+    # -----------------------------------------------------------------------
+    if [ -n "${PUBLISH_SKIP_ENGINE_CONTENT_CHECK:-}" ]; then
+      echo "  WARNING: engine content check SKIPPED by PUBLISH_SKIP_ENGINE_CONTENT_CHECK" >&2
+    else
+    say "Comparing the pinned engine against this repo's build"
+    npm run build --workspace="@optima-compliance/engine" >/dev/null
+
+    ENGINE_PROBE="$(mktemp -d)"
+    (cd "$ENGINE_PROBE" && npm pack "@optima-compliance/engine@$ENGINE_PIN" >/dev/null 2>&1) \
+      || fail "could not download @optima-compliance/engine@$ENGINE_PIN to compare against."
+    tar -xzf "$ENGINE_PROBE"/*.tgz -C "$ENGINE_PROBE"
+
+    # Compare .js and .d.ts only. Source maps embed absolute paths and differ
+    # between machines for reasons that say nothing about the code.
+    fingerprint() {
+      ( cd "$1" && find . -type f \( -name '*.js' -o -name '*.d.ts' \) \
+          | LC_ALL=C sort \
+          | while read -r f; do printf '%s  %s\n' "$(sha256sum "$f" | cut -d' ' -f1)" "$f"; done )
+    }
+
+    PUBLISHED_FP="$(fingerprint "$ENGINE_PROBE/package/dist")"
+    LOCAL_FP="$(fingerprint "packages/engine/dist")"
+
+    if [ "$PUBLISHED_FP" != "$LOCAL_FP" ]; then
+      echo "" >&2
+      echo "  differences (< published on npm, > built here):" >&2
+      diff <(printf '%s\n' "$PUBLISHED_FP") <(printf '%s\n' "$LOCAL_FP") | sed 's/^/    /' >&2 || true
+      echo "" >&2
+      rm -rf "$ENGINE_PROBE"
+      fail "@optima-compliance/engine@$ENGINE_PIN on the registry is NOT the engine this repo builds, though both call themselves $ENGINE_PIN.
+
+That means the engine was changed without its version being bumped, and publishing $PACKAGE_KIND now would ship rules against an engine that cannot run them — silently, because npm resolves it cleanly and nothing errors.
+
+Fix: bump packages/engine/package.json, publish the engine, move this package's pin to match, then publish again.
+
+If you are certain the difference is only a toolchain artefact, re-run with PUBLISH_SKIP_ENGINE_CONTENT_CHECK=1 — and say so in the release notes, because this check exists precisely because the obvious signals all agreed while the code did not."
+    fi
+    rm -rf "$ENGINE_PROBE"
+    echo "  engine@$ENGINE_PIN on the registry matches this build"
+    fi
     ;;
 esac
 
