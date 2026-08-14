@@ -15,6 +15,7 @@ import type {
   EntityType,
   Jurisdiction,
 } from "./facts.js";
+import type { HolidayCalendar } from "./holidays.js";
 
 /**
  * How often the obligation recurs and what its due date is anchored to.
@@ -213,5 +214,24 @@ export interface Rule {
    * `rollOffWeekend` for why.
    */
   weekendRule?: "roll-forward" | "roll-backward";
+
+  /**
+   * Which holiday calendar this rule's agency observes — NEH-443.
+   *
+   * Opt-in per rule, exactly as `weekendRule` is, and for the same reason:
+   * naming one asserts something about the agency, and applying a calendar
+   * globally would invent a legal position the rule data never claimed.
+   *
+   * Only meaningful alongside `weekendRule` — it refines where a roll lands.
+   * A rule with a holiday calendar and no weekend rule is not rolling at all,
+   * which `rules:validate` rejects rather than silently ignoring.
+   *
+   * `"us-federal"` is the only value today. State holidays are not modelled:
+   * they vary, some float, and several states observe days no other state does.
+   * A state rule therefore names nothing, its obligations report no calendar,
+   * and a consumer can SEE that its dates were not holiday-checked instead of
+   * assuming they were.
+   */
+  holidayCalendar?: HolidayCalendar;
   notes?: string;
 }

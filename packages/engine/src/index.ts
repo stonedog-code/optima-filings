@@ -85,3 +85,16 @@ export {
   toDocumentType,
 } from "./documentTypes.js";
 export type { DocumentType, DocumentTypeInfo } from "./documentTypes.js";
+
+// NEH-443. Exported because a consumer rendering a deadline needs to say
+// whether a holiday calendar was applied, and because `isFederalHoliday` is
+// the kind of thing a self-hoster's own tooling will want.
+export {
+  HOLIDAY_CALENDARS,
+  federalHolidays,
+  isFederalHoliday,
+  isClosed,
+  rollForwardToBusinessDay,
+  rollBackwardToBusinessDay,
+} from "./holidays.js";
+export type { HolidayCalendar } from "./holidays.js";

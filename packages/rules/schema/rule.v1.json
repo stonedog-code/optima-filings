@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://optimafilings.com/schema/rule.v1.json",
   "title": "Optima Filings rule, v1",
-  "description": "One filing obligation in one jurisdiction. See docs/rule-authoring.md — you can usually copy a neighbouring rule and change three fields.",
+  "description": "One filing obligation in one jurisdiction. See docs/rule-authoring.md \u2014 you can usually copy a neighbouring rule and change three fields.",
   "definitions": {
     "condition": {
       "type": "object",
@@ -62,7 +62,7 @@
     "id": {
       "type": "string",
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
-      "description": "Stable, kebab-case, jurisdiction-prefixed: us-wa-sos-annual-report. A PERMANENT PUBLIC IDENTIFIER — the B2B API and customer integrations key off it. Never rename one; supersede it instead."
+      "description": "Stable, kebab-case, jurisdiction-prefixed: us-wa-sos-annual-report. A PERMANENT PUBLIC IDENTIFIER \u2014 the B2B API and customer integrations key off it. Never rename one; supersede it instead."
     },
     "jurisdiction": {
       "type": "string",
@@ -138,7 +138,7 @@
             "type",
             "anchor"
           ],
-          "description": "Due on the anniversary of formation — month AND day come from the ENTITY, so every entity has a different due date. Oregon (ORS 65.787(1), 60.787(1), 63.787(1): \"by the corporation's anniversary\"). There is deliberately no dayOfMonth: that is the whole distinction from formation-month, where the RULE names the day. The two agree only when an entity was formed on a month end, which is why picking the wrong one is a silent up-to-30-day error.",
+          "description": "Due on the anniversary of formation \u2014 month AND day come from the ENTITY, so every entity has a different due date. Oregon (ORS 65.787(1), 60.787(1), 63.787(1): \"by the corporation's anniversary\"). There is deliberately no dayOfMonth: that is the whole distinction from formation-month, where the RULE names the day. The two agree only when an entity was formed on a month end, which is why picking the wrong one is a silent up-to-30-day error.",
           "properties": {
             "type": {
               "enum": [
@@ -251,7 +251,7 @@
         "amountMinorUnits": {
           "type": "integer",
           "minimum": 0,
-          "description": "INTEGER MINOR UNITS. 6000 is $60.00. Never a float — a rounding error in a fee is a support ticket and a credibility hit."
+          "description": "INTEGER MINOR UNITS. 6000 is $60.00. Never a float \u2014 a rounding error in a fee is a support ticket and a credibility hit."
         },
         "currency": {
           "const": "USD"
@@ -261,7 +261,7 @@
     "conditions": {
       "type": "array",
       "minItems": 1,
-      "description": "The rule applies only when ALL entries hold. An entry is either a single test, or an {\"anyOf\": [...]} group that holds when ANY of its members does — for a threshold the statute writes as 'X or Y', such as Form 990's receipts-or-assets test. A condition may only test a fact the entity fact model defines; rules:validate enforces that.",
+      "description": "The rule applies only when ALL entries hold. An entry is either a single test, or an {\"anyOf\": [...]} group that holds when ANY of its members does \u2014 for a threshold the statute writes as 'X or Y', such as Form 990's receipts-or-assets test. A condition may only test a fact the entity fact model defines; rules:validate enforces that.",
       "items": {
         "oneOf": [
           {
@@ -277,7 +277,7 @@
               "anyOf": {
                 "type": "array",
                 "minItems": 2,
-                "description": "Holds when any member holds. One level deep only — a group may not contain another group. Nesting would make rules markedly harder for a non-developer to author and for a reviewer to check against a statute, which is the point of the format.",
+                "description": "Holds when any member holds. One level deep only \u2014 a group may not contain another group. Nesting would make rules markedly harder for a non-developer to author and for a reviewer to check against a statute, which is the point of the format.",
                 "items": {
                   "$ref": "#/definitions/condition"
                 }
@@ -294,7 +294,7 @@
     "citation": {
       "type": "string",
       "minLength": 4,
-      "description": "REQUIRED. The statute, regulation, or agency page this came from — 'RCW 24.03A.075'. A rule without a citation is unreviewable. Cite the primary source, never another compliance vendor: they are wrong often enough that copying them imports their errors."
+      "description": "REQUIRED. The statute, regulation, or agency page this came from \u2014 'RCW 24.03A.075'. A rule without a citation is unreviewable. Cite the primary source, never another compliance vendor: they are wrong often enough that copying them imports their errors."
     },
     "citationUrl": {
       "type": "string",
@@ -304,19 +304,19 @@
     "agencyUrl": {
       "type": "string",
       "format": "uri",
-      "description": "The agency's OWN page for this filing — where a filer goes to file it and to read the current fee, form and deadline. Distinct from citationUrl, which is the legal source a reviewer checks the rule against. Both are needed because the statute frequently does not carry the operative detail: RCW 23.95.255(4) hands the due date to the secretary of state, and 8 Del. C. 502 sets no fee at all. Required in practice for every shipped rule; optional in the schema only because a filing with no agency page on the public web is conceivable."
+      "description": "The agency's OWN page for this filing \u2014 where a filer goes to file it and to read the current fee, form and deadline. Distinct from citationUrl, which is the legal source a reviewer checks the rule against. Both are needed because the statute frequently does not carry the operative detail: RCW 23.95.255(4) hands the due date to the secretary of state, and 8 Del. C. 502 sets no fee at all. Required in practice for every shipped rule; optional in the schema only because a filing with no agency page on the public web is conceivable."
     },
     "lastVerified": {
       "type": "string",
       "format": "date",
-      "description": "The date a human last read the primary source and confirmed this rule. Bumping it without re-reading is worse than leaving it stale — it converts an honest 'unknown' into a false 'checked'."
+      "description": "The date a human last read the primary source and confirmed this rule. Bumping it without re-reading is worse than leaving it stale \u2014 it converts an honest 'unknown' into a false 'checked'."
     },
     "status": {
       "enum": [
         "draft",
         "active"
       ],
-      "description": "'draft' means written but NOT yet checked against the primary source by a human. It is the honest state for a rule you are unsure about, not a lesser form of 'active' — contribute a draft rather than asserting something you have not verified. Promotion to 'active' means someone read the statute."
+      "description": "'draft' means written but NOT yet checked against the primary source by a human. It is the honest state for a rule you are unsure about, not a lesser form of 'active' \u2014 contribute a draft rather than asserting something you have not verified. Promotion to 'active' means someone read the statute."
     },
     "effectiveFrom": {
       "type": "string",
@@ -326,19 +326,29 @@
     "effectiveTo": {
       "type": "string",
       "format": "date",
-      "description": "Last date it governs. Absent means still in force. When a fee or deadline changes, set this and add a NEW rule — never edit in place, or the historical answer is destroyed and the change escapes review."
+      "description": "Last date it governs. Absent means still in force. When a fee or deadline changes, set this and add a NEW rule \u2014 never edit in place, or the historical answer is destroyed and the change escapes review."
     },
     "supersededBy": {
       "type": "string",
       "description": "Id of the rule that replaced this one."
     },
     "weekendRule": {
-      "enum": ["roll-forward", "roll-backward"],
+      "enum": [
+        "roll-forward",
+        "roll-backward"
+      ],
       "description": "Opt in only where the statute or agency actually says a weekend deadline moves, and pick the direction the statute states. Rolling by default, or guessing the direction, would invent a legal position the rule never claimed. roll-forward: the IRS moves a weekend due date to the next business day. roll-backward: an agency asking for the last business day OF A PERIOD, such as WAC 434-120-140(2)(a), moves it earlier."
     },
     "notes": {
       "type": "string",
-      "description": "Anything a reviewer needs — a quirk, an ambiguity, what was checked."
+      "description": "Anything a reviewer needs \u2014 a quirk, an ambiguity, what was checked."
+    },
+    "holidayCalendar": {
+      "type": "string",
+      "enum": [
+        "us-federal"
+      ],
+      "description": "Holiday calendar this agency observes. Opt-in, like weekendRule, and only meaningful alongside it. State holidays are not modelled, so a state rule names nothing and its obligations report no calendar - which is how a consumer can tell an unchecked date from a checked one."
     }
   }
 }
