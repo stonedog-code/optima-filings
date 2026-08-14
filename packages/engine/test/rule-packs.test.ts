@@ -14,7 +14,12 @@ import { join } from "node:path";
 
 import { evaluate } from "../src/evaluate.js";
 import { CONDITIONABLE_FACTS } from "../src/facts.js";
+import type { EntityFacts } from "../src/facts.js";
 import type { Rule } from "../src/rule.js";
+// Imported as a namespace as well as by name, so the 990-family invariant at
+// the bottom can iterate EVERY fixture rather than a hand-maintained list that
+// the next fixture would be missing from.
+import * as fixtures from "./fixtures/entities.js";
 import {
   DE_CORP,
   ENDOWED_NON_SOLICITING_CHARITY,
@@ -282,6 +287,26 @@ describe("an endowed Washington charity that does not solicit", () => {
     // the next time these obligations are reorganised. The specific filing is
     // pinned separately below.
     expect(result.obligations.length).toBeGreaterThan(0);
+  });
+
+  it("owes exactly ONE of the 990 family, not both", () => {
+    // THE REGRESSION (NEH-410). This entity is low on receipts ($30k) and high
+    // on assets ($9M), and it fired BOTH `us-federal-form-990-n` and
+    // `us-federal-form-990`. Those are alternatives — an organisation files one
+    // annual return — and being told to file two is the kind of wrong that
+    // makes a customer distrust the rest of the calendar.
+    //
+    // Neither condition was individually unfaithful: 990-N's row states a
+    // gross-receipts test with no assets ceiling, and 990's row states an
+    // assets test with no receipts floor. The published thresholds table simply
+    // does not resolve an entity low on one axis and high on the other.
+    //
+    // The fix gives 990-N an assets ceiling, exactly as form-990-ez.json
+    // already carries one, and toward the FULLER return — under-filing is the
+    // worse direction for a compliance product to be wrong in.
+    const owed = result.obligations.map((o) => o.ruleId);
+    expect(owed).toContain("us-federal-form-990");
+    expect(owed).not.toContain("us-federal-form-990-n");
   });
 
   it("owes the TRUST registration, not the solicitation one", () => {
@@ -749,5 +774,123 @@ describe("every rule links to the agency, not only to the statute", () => {
     for (const rule of RULES.filter((r) => r.jurisdiction !== "US")) {
       expect(rule.agencyUrl).not.toMatch(LEGISLATURE);
     }
+  });
+});
+
+/**
+ * The 990 family is mutually exclusive — NEH-410.
+ *
+ * An organisation files ONE annual return. `us-federal-form-990`,
+ * `us-federal-form-990-ez` and `us-federal-form-990-n` are alternatives, and
+ * the individual thresholds are the implementation of that invariant rather
+ * than the invariant itself.
+ *
+ * This is asserted separately from any one fixture because the overlap it
+ * catches is a property of the THRESHOLDS, not of any entity anyone thought to
+ * write down. The bug shipped precisely because every fixture was low on both
+ * axes or high on both axes, so each rule fired alone and the suite agreed with
+ * a pack that could tell someone to file twice.
+ *
+ * Note the pack's own modelling choices are what make this hold: 990-EZ carries
+ * a receipts floor and 990-N an assets ceiling, neither of which is an IRS rule.
+ * See the `notes` on both files.
+ */
+describe("the 990 family is mutually exclusive", () => {
+  const FAMILY = [
+    "us-federal-form-990",
+    "us-federal-form-990-ez",
+    "us-federal-form-990-n",
+  ];
+
+  function familyOwedBy(facts: EntityFacts): string[] {
+    const { obligations } = evaluate(facts, RULES, {
+      asOf: "2026-01-01",
+      horizonMonths: 12,
+      includeDraft: true,
+    });
+    return [...new Set(obligations.map((o) => o.ruleId))].filter((id) =>
+      FAMILY.includes(id),
+    );
+  }
+
+  /**
+   * Every fixture, discovered from the module rather than listed here, so a
+   * fixture added later is covered without anyone remembering to add it.
+   */
+  const FIXTURES = Object.entries(fixtures).filter(
+    (entry): entry is [string, EntityFacts] =>
+      typeof entry[1] === "object" && entry[1] !== null && "entityTypes" in entry[1],
+  );
+
+  it("covers every fixture, so this cannot pass vacuously", () => {
+    // A guard on the guard. If the filter above ever stopped matching — a
+    // fixture module reshaped, a rename — `it.each` over an empty list reports
+    // no failures and reads exactly like a clean run.
+    expect(FIXTURES.length).toBeGreaterThan(8);
+  });
+
+  it.each(FIXTURES)("%s owes at most one federal annual return", (_name, facts) => {
+    expect(familyOwedBy(facts).length).toBeLessThanOrEqual(1);
+  });
+
+  /**
+   * The fixtures prove today's entities are safe. This proves the THRESHOLDS
+   * are, which is the thing that will be edited.
+   *
+   * The grid straddles both published lines ($50k receipts, $200k receipts,
+   * $500k assets) from both sides, including the exact boundary values — an
+   * off-by-one in `lt` vs `lte` on any of them opens the overlap again, and it
+   * would be invisible to every fixture.
+   */
+  it("holds across the whole revenue x assets grid, not just at the fixtures", () => {
+    const REVENUES = [0, 4_999_999, 5_000_000, 5_000_001, 19_999_999, 20_000_000, 50_000_000];
+    const ASSETS = [0, 49_999_999, 50_000_000, 50_000_001, 900_000_000];
+
+    const overlaps: string[] = [];
+    for (const grossRevenueMinorUnits of REVENUES) {
+      for (const totalAssetsMinorUnits of ASSETS) {
+        const owed = familyOwedBy({
+          ...fixtures.WA_SMALL_CHARITY,
+          grossRevenueMinorUnits,
+          totalAssetsMinorUnits,
+        });
+        if (owed.length > 1) {
+          overlaps.push(
+            `revenue ${grossRevenueMinorUnits} / assets ${totalAssetsMinorUnits} -> ${owed.join(" + ")}`,
+          );
+        }
+      }
+    }
+
+    // Asserted on the array so a failure names the exact cell and the rules
+    // that collided, rather than "expected 0, received 4".
+    expect(overlaps).toEqual([]);
+  });
+
+  /**
+   * The other half of the invariant, and the more dangerous one to get wrong.
+   *
+   * Mutual exclusivity is trivially satisfiable by having NO rule fire, which
+   * would be a false negative — a clean calendar with the annual return missing
+   * from it. That is the failure this product can least afford, and it is what
+   * NEH-228 was.
+   */
+  it("still fires exactly one return for a 501c3 anywhere on that grid", () => {
+    const gaps: string[] = [];
+    for (const grossRevenueMinorUnits of [0, 5_000_000, 5_000_001, 20_000_000]) {
+      for (const totalAssetsMinorUnits of [0, 50_000_000, 900_000_000]) {
+        const owed = familyOwedBy({
+          ...fixtures.WA_SMALL_CHARITY,
+          grossRevenueMinorUnits,
+          totalAssetsMinorUnits,
+        });
+        if (owed.length !== 1) {
+          gaps.push(
+            `revenue ${grossRevenueMinorUnits} / assets ${totalAssetsMinorUnits} -> ${owed.length === 0 ? "NOTHING" : owed.join(" + ")}`,
+          );
+        }
+      }
+    }
+    expect(gaps).toEqual([]);
   });
 });
