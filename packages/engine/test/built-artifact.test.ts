@@ -37,7 +37,7 @@
  * **What it does NOT cover**, and this matters because it is the half that
  * actually bit: it cannot tell you whether the artifact was ever *published*.
  * The dist here is correct; the tarball on npm for 0.4.0 is not, and no local
- * test can see that. That gap belongs to the publish script — see NEH-704.
+ * test can see that. That gap belongs to the publish script — see NEH-708.
  */
 
 import { execFileSync } from "node:child_process";
@@ -135,7 +135,7 @@ describe("the rule pack does not require more than the engine it pins", () => {
     obvious reading is that it failed: it did not. The pack pinned 0.4.0 and the
     workspace engine WAS 0.4.0 — the pin was correct. The drift was that the
     engine's SOURCE gained features without its version moving, which no
-    pin-equality check can see. That is the gap, and it is NEH-704's.
+    pin-equality check can see. That is the gap, and it is NEH-708's.
   */
 
   it("names no rule capability the built engine lacks", () => {
