@@ -1,6 +1,6 @@
 {
   "name": "@optima-compliance/engine",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Pure, clock-free compliance rules evaluator. Entity facts and rules in, filing obligations out.",
   "license": "AGPL-3.0-only",
   "author": "StoneDogCode L.L.C.",

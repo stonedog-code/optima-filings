@@ -14,16 +14,29 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
     "./package.json": "./package.json"
   },
-  "files": ["dist", "README.md"],
-  "//publishConfig": "A scoped package defaults to RESTRICTED, which fails on a free account with a misleading 402 — and npm answers 404 rather than 403 for a scope it will not confirm, so the error reads like a missing package while auth is fine. Set here rather than relying on `--access public` at the command line, so the flag cannot be forgotten by whoever publishes next.",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "//publishConfig": "A scoped package defaults to RESTRICTED, which fails on a free account with a misleading 402 \u2014 and npm answers 404 rather than 403 for a scope it will not confirm, so the error reads like a missing package while auth is fine. Set here rather than relying on `--access public` at the command line, so the flag cannot be forgotten by whoever publishes next.",
   "publishConfig": {
     "access": "public"
   },
-  "scripts": { "build": "tsc --build", "type-check": "tsc --noEmit" },
-  "//dependencies": "The engine is pinned EXACTLY, never by range, for the reason the project file gives about rule packs: a caret would let two installs of identical code resolve different engines. It also has to be a version that actually exists on the registry — this package sat pinned at 0.1.0 while the engine reached 0.4.0, and publishing it that way would have handed consumers an engine predating the `formation-anniversary` cadence anchor, which returns NOTHING for the rules that use it rather than failing.",
-  "dependencies": { "@optima-compliance/engine": "0.4.0" },
-  "engines": { "node": ">=22" }
+  "scripts": {
+    "build": "tsc --build",
+    "type-check": "tsc --noEmit"
+  },
+  "//dependencies": "The engine is pinned EXACTLY, never by range, for the reason the project file gives about rule packs: a caret would let two installs of identical code resolve different engines. It also has to be a version that actually exists on the registry \u2014 this package sat pinned at 0.1.0 while the engine reached 0.4.0, and publishing it that way would have handed consumers an engine predating the `formation-anniversary` cadence anchor, which returns NOTHING for the rules that use it rather than failing.",
+  "dependencies": {
+    "@optima-compliance/engine": "0.5.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
 }
