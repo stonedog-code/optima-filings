@@ -137,7 +137,7 @@ export function isWeekend(date: CalendarDate): boolean {
 }
 
 /**
- * Roll a weekend date forward to the following Monday.
+ * Roll forward to the next open day.
  *
  * **Applied only where a rule opts in.** States genuinely differ: some statutes
  * say a deadline falling on a weekend moves to the next business day, others
@@ -145,11 +145,16 @@ export function isWeekend(date: CalendarDate): boolean {
  * treat the stated date as final. Rolling everything by default would invent a
  * legal position the rule data never claimed.
  *
- * Federal holidays are **not** handled. Doing it properly needs a per-
- * jurisdiction holiday calendar including state holidays, and a half-right
- * implementation is worse than an absent one: it would move some dates
- * correctly and leave others wrong, with no way to tell which from the output.
- * Tracked as future work; until then a rule may only ask for weekend rolling.
+ * `calendar` extends that opt-in to holidays (NEH-443). Omitted, only weekends
+ * move — which is the honest behaviour for a rule whose jurisdiction has no
+ * holiday calendar here, and the reason this is a parameter rather than a
+ * global.
+ *
+ * **Weekends only.** Holidays are handled by `rollForwardToBusinessDay` in
+ * `holidays.ts`, which a rule reaches by naming a `holidayCalendar`. The split
+ * is not arbitrary: this module is the date primitives and must not import the
+ * holiday module, which imports these. Keeping the weekend arithmetic here and
+ * self-contained is what stops that cycle.
  */
 export function rollForwardOffWeekend(date: CalendarDate): CalendarDate {
   const dow = dayOfWeek(date);
@@ -169,10 +174,10 @@ export function rollForwardOffWeekend(date: CalendarDate): CalendarDate {
  * not the Monday after. Rolling the wrong way makes the product show a date up
  * to two days LATE, which is the direction that costs somebody a late fee.
  *
- * Same holiday caveat as its twin: a deadline landing on a legal holiday is
- * still wrong under both, and a half-right holiday implementation would be
- * worse than none because nothing in the output would say which dates it got
- * right.
+ * **Weekends only**, like its twin. `rollBackwardToBusinessDay` in
+ * `holidays.ts` is the one that also clears holidays, and it matters more in
+ * this direction: the WAC asks for the "last **business day**", and a Friday
+ * that is a holiday is not one.
  */
 export function rollBackwardOffWeekend(date: CalendarDate): CalendarDate {
   const dow = dayOfWeek(date);

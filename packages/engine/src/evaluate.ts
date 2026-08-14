@@ -14,9 +14,12 @@ import {
   isOnOrBefore,
   parseDate,
   parseMonthDay,
-  rollForwardOffWeekend,
-  rollBackwardOffWeekend,
 } from "./calendar.js";
+import {
+  rollForwardToBusinessDay,
+  rollBackwardToBusinessDay,
+  type HolidayCalendar,
+} from "./holidays.js";
 import type { CalendarDate, EntityFacts } from "./facts.js";
 import { isConditionGroup } from "./rule.js";
 import type {
@@ -74,6 +77,25 @@ export interface RuleProvenance {
 /** One thing the entity owes, on one date. */
 export interface Obligation extends RuleProvenance {
   dueOn: CalendarDate;
+
+  /**
+   * Which holiday calendar was applied when computing `dueOn` — NEH-443.
+   *
+   * `undefined` means **none was**, and that is the point of the field rather
+   * than an omission. "We did not check for holidays in this jurisdiction" and
+   * "we checked and this date is clear" are different claims, and a compliance
+   * product that reports them identically is making the stronger one for free.
+   *
+   * Federal rules can say `"us-federal"`. State rules cannot say anything yet,
+   * because state holidays are not modelled — so a state deadline landing on a
+   * state holiday is still wrong, and this field is how a consumer can SEE that
+   * rather than infer it. A UI is expected to render the difference.
+   *
+   * It reports the calendar the rule asked for, not whether a shift happened.
+   * "Considered and no move was needed" and "considered and moved" are both
+   * checked; only the third case is the one worth surfacing.
+   */
+  holidayCalendar?: HolidayCalendar;
 }
 
 /**
@@ -179,7 +201,14 @@ export function evaluate(
       // was due in March, which is what makes historical questions answerable.
       if (!ruleInForceOn(rule, dueOn)) continue;
 
-      obligations.push({ ...provenanceOf(rule), dueOn });
+      // `holidayCalendar` is copied from the rule rather than derived from
+      // whether a shift happened: the field reports what was CONSIDERED, and a
+      // date that needed no move was still checked (NEH-443).
+      obligations.push({
+        ...provenanceOf(rule),
+        dueOn,
+        ...(rule.holidayCalendar ? { holidayCalendar: rule.holidayCalendar } : {}),
+      });
     }
   }
 
@@ -402,9 +431,9 @@ function applyWeekendRule(rule: Rule, date: CalendarDate): CalendarDate {
   // is what keeps that true when a third direction is added.
   switch (rule.weekendRule) {
     case "roll-forward":
-      return rollForwardOffWeekend(date);
+      return rollForwardToBusinessDay(date, rule.holidayCalendar);
     case "roll-backward":
-      return rollBackwardOffWeekend(date);
+      return rollBackwardToBusinessDay(date, rule.holidayCalendar);
     case undefined:
       // Not "no opinion" — a deliberate statement that this rule's agency has
       // not said a weekend deadline moves, so we do not move it on their behalf.

@@ -894,3 +894,84 @@ describe("the 990 family is mutually exclusive", () => {
     expect(gaps).toEqual([]);
   });
 });
+
+/**
+ * Holidays reach the real rule pack — NEH-443.
+ *
+ * `holidays.test.ts` proves the calendar and the roll. This proves the wiring:
+ * that a rule opting in actually moves a real deadline, and that a rule which
+ * did NOT opt in reports as much rather than looking checked.
+ */
+describe("federal holidays applied to the shipped rules", () => {
+  // The 990 family is due the 15th of the 5th month after the year end, so an
+  // August year end puts it on 15 January. MLK Day is the third Monday, which
+  // IS the 15th in any year starting on a Monday — 2029 is one.
+  //
+  // A weekday holiday, deliberately: 15 Jan 2029 is a MONDAY, so the weekend
+  // rule alone leaves it exactly where it is and only holiday handling moves
+  // it. A holiday falling on a weekend would prove nothing here.
+  const AUGUST_YEAR_END_CHARITY = {
+    ...WA_SMALL_CHARITY,
+    name: "Example August Year End Charity",
+    fiscalYearEnd: "08-31",
+  };
+
+  const result = evaluate(AUGUST_YEAR_END_CHARITY, RULES, {
+    asOf: "2028-06-01",
+    horizonMonths: 12,
+    includeDraft: true,
+  });
+
+  const federalReturn = result.obligations.find((o) =>
+    o.ruleId.startsWith("us-federal-form-990"),
+  );
+
+  it("finds the federal return at all", () => {
+    // Guard on the guard: every assertion below is vacuous if the entity owes
+    // no federal return in this window.
+    expect(federalReturn).toBeDefined();
+  });
+
+  it("moves a deadline off Martin Luther King, Jr. Day", () => {
+    // Without the holiday calendar this is 2029-01-15 — a day the IRS is shut,
+    // on a rule whose own citation quotes "Saturday, Sunday, or legal holiday".
+    expect(federalReturn?.dueOn).toBe("2029-01-16");
+  });
+
+  it("says which calendar was applied", () => {
+    expect(federalReturn?.holidayCalendar).toBe("us-federal");
+  });
+
+  it("reports NO calendar for a rule that was not holiday-checked", () => {
+    // The honest half, and the reason the field exists. Washington's charities
+    // renewal rolls BACKWARD to the last business day and a Washington state
+    // holiday would move it — but state holidays are not modelled, so this
+    // date has not been holiday-checked and the obligation must not imply it
+    // was. "We did not check" and "we checked and it is clear" are different
+    // claims; an absent field is how a consumer can tell them apart.
+    const solicit = evaluate(JUNE_YEAR_END_SOLICITING_CHARITY, RULES, {
+      asOf: "2026-01-01",
+      horizonMonths: 12,
+      includeDraft: true,
+    }).obligations.find(
+      (o) => o.ruleId === "us-wa-charitable-solicitation-registration",
+    );
+
+    expect(solicit).toBeDefined();
+    expect(solicit?.holidayCalendar).toBeUndefined();
+  });
+
+  it("opts in every federal rule that rolls, and no state rule", () => {
+    // The invariant behind the two cases above. A federal rule that rolls but
+    // names no calendar is the half-right state this issue exists to avoid; a
+    // state rule that named one would be asserting a calendar that does not
+    // model its jurisdiction's holidays.
+    for (const rule of RULES.filter((r) => r.weekendRule)) {
+      if (rule.jurisdiction === "US") {
+        expect(rule.holidayCalendar).toBe("us-federal");
+      } else {
+        expect(rule.holidayCalendar).toBeUndefined();
+      }
+    }
+  });
+});
