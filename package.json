@@ -15,6 +15,8 @@
     "apps/*"
   ],
   "scripts": {
+    "//dev": "Start the self-host dashboard locally. The ONE way in, so a contributor never has to know which workspace or which environment variables — scripts/dev.mjs supplies both. `npm run dev -- --port 4000` forwards to next dev.",
+    "dev": "node scripts/dev.mjs",
     "type-check": "tsc --build --force",
     "lint": "eslint . --ext ts,tsx",
     "test": "jest",

@@ -33,6 +33,11 @@ npm install
 npm run gate          # validate rules, typecheck, lint, test
 ```
 
+To see your rule in the dashboard, `npm run dev` and open
+<http://localhost:3000>. Nothing else to configure — it keeps its database in
+`data/` inside the checkout and shows draft rules, which is what makes a rule
+you just wrote visible.
+
 1. **Find the right file.** `packages/rules/us/<state>/<slug>.json`, or
    `packages/rules/us/federal/` for federal filings. Rules are organised by
    jurisdiction, not by entity type, because one rule usually covers several

@@ -58,7 +58,20 @@ is five minutes of someone's time.
 
 ```bash
 npm install
+npm run dev           # the dashboard, on http://localhost:3000
+```
+
+That is the whole setup. `npm run dev` puts the SQLite database in `data/`
+inside the checkout (gitignored) and switches unverified rules on, because the
+seed set is entirely `draft` and a calendar with nothing in it looks like a
+broken app rather than an honest empty one. Both are defaults, not
+overrides — export `OPTIMA_DB_PATH` or `OPTIMA_INCLUDE_DRAFT` and you get what
+you asked for. To run the real self-host artefact instead, see
+[`docker/README.md`](docker/README.md).
+
+```bash
 npm run gate          # validate rules, typecheck, lint, test
+npm run test:e2e      # the browser journey, against a production build
 npm run rules:staleness   # which rules nobody has re-verified lately
 ```
 
