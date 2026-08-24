@@ -30,6 +30,11 @@ export default {
     "^@optima-compliance/rules$": "<rootDir>/packages/rules/src/index.ts",
     "^@optima-compliance/db$": "<rootDir>/packages/db/src/index.ts",
     "^server-only$": "<rootDir>/test-support/server-only.cjs",
+    // The web app's own `@/` alias, mirroring `apps/web/tsconfig.json`. Without
+    // it a test cannot import a route or a page at all — anything reaching
+    // `@/lib/server` fails to resolve — so route-level coverage was
+    // structurally impossible rather than merely absent (NEH-1147).
+    "^@/(.*)$": "<rootDir>/apps/web/src/$1",
     "^@optima-compliance/reminders$": "<rootDir>/packages/reminders/src/index.ts",
     "^@optima-compliance/export$": "<rootDir>/packages/export/src/index.ts",
     // @stonedogcode/style is a SUBMODULE shipping TypeScript source, so both entry
