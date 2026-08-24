@@ -1,5 +1,5 @@
 /**
- * @optima-compliance/export — obligations to calendar and spreadsheet formats.
+ * @optima-compliance/export — deadlines to calendar and spreadsheet formats.
  *
  * Copyright (C) 2026 StoneDogCode L.L.C.
  * SPDX-License-Identifier: AGPL-3.0-only
@@ -14,6 +14,8 @@
  * from the clock.
  */
 
-export { toICalendar, obligationUid, foldLine } from "./ical.js";
+export { toICalendar, obligationUid, actionUid, foldLine } from "./ical.js";
 export type { ICalendarOptions } from "./ical.js";
 export { toCsv } from "./csv.js";
+export { isCalendarAction } from "./action.js";
+export type { CalendarAction } from "./action.js";

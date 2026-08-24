@@ -4,8 +4,9 @@
  */
 
 import type { Obligation } from "@optima-compliance/engine";
-import { foldLine, obligationUid, toICalendar } from "../src/ical.js";
+import { actionUid, foldLine, obligationUid, toICalendar } from "../src/ical.js";
 import { toCsv } from "../src/csv.js";
+import { isCalendarAction, type CalendarAction } from "../src/action.js";
 
 const DTSTAMP = "20260801T000000Z";
 
@@ -31,8 +32,8 @@ const draft: Obligation = {
   dueOn: "2026-11-30",
 };
 
-const ics = (obligations: Obligation[], options = {}) =>
-  toICalendar(obligations, { dtstamp: DTSTAMP, ...options });
+const ics = (items: (Obligation | CalendarAction)[], options = {}) =>
+  toICalendar(items, { dtstamp: DTSTAMP, ...options });
 
 /**
  * Undo RFC 5545 line folding.
@@ -203,6 +204,61 @@ describe("toCsv", () => {
     expect(toCsv([]).split("\r\n")[0]).toContain("due_on,jurisdiction,title");
   });
 
+  it("keeps the original twelve columns at their original indices", () => {
+    // A COMPATIBILITY CONTRACT, not a formatting preference (NEH-1147).
+    //
+    // `apps/cli` writes this to stdout, so somebody's `cut -d, -f2` is a
+    // realistic consumer. Inserting a column mid-row would keep every such
+    // script RUNNING while feeding it the wrong field — the widening was
+    // reviewed and this is the flaw the review caught.
+    //
+    // Written as an exact positional list rather than `toContain`, so an
+    // insertion anywhere in the run fails here rather than only at the seam.
+    const columns = toCsv([]).split("\r\n")[0]!.split(",");
+
+    expect(columns.slice(0, 12)).toEqual([
+      "due_on",
+      "jurisdiction",
+      "title",
+      "agency",
+      "form",
+      "fee_minor_units",
+      "currency",
+      "citation",
+      "citation_url",
+      "status",
+      "last_verified",
+      "rule_id",
+    ]);
+  });
+
+  it("appends the new columns after them", () => {
+    const columns = toCsv([]).split("\r\n")[0]!.split(",");
+    expect(columns.slice(12)).toEqual(["source", "detail", "completed_on"]);
+  });
+
+  it("leaves an obligation row's original twelve values where they were", () => {
+    // The header staying put is half of it; the ROW has to match. A row built
+    // from a different list than the header is the silent misalignment this
+    // pair exists to catch.
+    const values = toCsv([obligation]).split("\r\n")[1]!.split(",");
+
+    expect(values.slice(0, 12)).toEqual([
+      "2026-03-31",
+      "US-WA",
+      "Nonprofit Corporation Annual Report",
+      "Washington Secretary of State",
+      "",
+      "6000",
+      "USD",
+      "RCW 24.03A.1010",
+      "",
+      "active",
+      "2026-08-01",
+      "us-wa-sos-nonprofit-annual-report",
+    ]);
+  });
+
   it("names the fee unit in the header so nobody misreads 6000", () => {
     const output = toCsv([obligation]);
     expect(output).toContain("fee_minor_units");
@@ -241,5 +297,157 @@ describe("toCsv", () => {
     const dataRow = toCsv([noFee]).split("\r\n")[1]!;
     expect(dataRow).toContain(",,");
     expect(dataRow).not.toContain(",0,");
+  });
+});
+
+describe("user-authored actions in the export — NEH-1147", () => {
+  const action: CalendarAction = {
+    id: "act-1",
+    title: "Respond to the IRS letter",
+    dueOn: "2026-09-15",
+    detail: "Notice CP299 — confirm the e-Postcard was filed",
+  };
+
+  const done: CalendarAction = {
+    id: "act-2",
+    title: "File the annual report",
+    dueOn: "2026-03-31",
+    completedOn: "2026-03-20",
+  };
+
+  describe("iCalendar", () => {
+    it("emits an event for every item of BOTH kinds", () => {
+      // THE COUNT, not merely that the file parses. A fixture of obligations
+      // alone passes against the code this replaces — the defect was that
+      // actions were silently dropped, so only an assertion sensitive to how
+      // many events came out can see it.
+      const output = ics([obligation, draft, action, done]);
+      expect(output.match(/BEGIN:VEVENT/g)).toHaveLength(4);
+      expect(output.match(/END:VEVENT/g)).toHaveLength(4);
+    });
+
+    it("keeps action UIDs in their own namespace, so ids cannot collide", () => {
+      const output = unfold(ics([action]));
+      expect(output).toContain("UID:action-act-1@optimafilings.com");
+      // An obligation UID is rule-id-and-date; an action's is prefixed. Without
+      // the prefix an action id equal to a rule id would overwrite that event
+      // in the importing client.
+      expect(actionUid(action)).not.toBe(obligationUid(obligation));
+    });
+
+    it("keys an action UID on the id alone, so editing the date MOVES the event", () => {
+      // Unlike an obligation, which recurs and keys on the date too. Keying an
+      // action on its date would make correcting a typo create a second event
+      // instead of moving the first.
+      expect(actionUid({ ...action, dueOn: "2027-01-01" })).toBe(actionUid(action));
+    });
+
+    it("does not dress a personal note up as a statute-backed obligation", () => {
+      const output = unfold(ics([action]));
+      // No jurisdiction prefix, which is how an obligation's SUMMARY leads.
+      expect(output).toContain(`SUMMARY:${action.title}`);
+      expect(output).not.toContain("SUMMARY:US-WA:");
+      expect(output).toContain("Your own reminder — not derived from a rule.");
+      // The provenance an obligation carries must be absent, not blank.
+      expect(output).not.toContain("Source: ");
+      expect(output).not.toContain("Last verified:");
+    });
+
+    it("carries the disclaimer on a user action too", () => {
+      expect(unfold(ics([action]))).toContain("Not legal or tax advice.");
+    });
+
+    it("marks a completed action rather than dropping it", () => {
+      // iCalendar PUBLISH has no delete semantic, so omitting a completed
+      // action leaves the event an earlier export created sitting on the user's
+      // calendar still reading as due. Exporting it marked lets a re-import
+      // correct the record — which is what the stable UID is for.
+      const output = unfold(ics([done]));
+      expect(output).toContain("SUMMARY:✓ File the annual report");
+      expect(output).toContain("Completed: 2026-03-20");
+    });
+
+    it("does not set an alarm on something already done", () => {
+      const output = ics([done], { reminderDaysBefore: [30, 7] });
+      expect(output).not.toContain("BEGIN:VALARM");
+    });
+
+    it("still sets alarms on an outstanding action", () => {
+      const output = ics([action], { reminderDaysBefore: [30, 7] });
+      expect(output.match(/BEGIN:VALARM/g)).toHaveLength(2);
+    });
+
+    it("escapes an action's text like any other", () => {
+      const nasty: CalendarAction = {
+        id: "act-3",
+        title: "Call the agency; ask about fees, forms",
+        dueOn: "2026-05-01",
+      };
+      // RFC 5545 §3.3.11: both are structural in iCalendar, so both are
+      // backslash-escaped. Written with doubled backslashes because this is a
+      // JS string literal — a single one is an unknown escape and vanishes,
+      // which would make the assertion pass against unescaped output.
+      expect(unfold(ics([nasty]))).toContain(
+        "SUMMARY:Call the agency\\; ask about fees\\, forms",
+      );
+    });
+  });
+
+  describe("CSV", () => {
+    it("writes a row for every item of BOTH kinds", () => {
+      const lines = toCsv([obligation, action, done]).trimEnd().split("\r\n");
+      // Header plus three rows. Same reasoning as the event count above.
+      expect(lines).toHaveLength(4);
+    });
+
+    it("names the source, so the two are not read as one kind of claim", () => {
+      const lines = toCsv([obligation, action]).trimEnd().split("\r\n");
+      const source = lines[0]!.split(",").indexOf("source");
+
+      expect(source).toBeGreaterThan(-1);
+      expect(lines[1]!.split(",")[source]).toBe("rule");
+      expect(lines[2]!.split(",")[source]).toBe("user");
+    });
+
+    it("leaves the provenance columns empty on a user row rather than inventing them", () => {
+      const [header, row] = toCsv([action]).trimEnd().split("\r\n");
+      const columns = header!.split(",");
+      const values = row!.split(",");
+
+      for (const column of ["agency", "citation", "fee_minor_units", "rule_id", "last_verified"]) {
+        expect(values[columns.indexOf(column)]).toBe("");
+      }
+      expect(values[columns.indexOf("source")]).toBe("user");
+      expect(values[columns.indexOf("due_on")]).toBe("2026-09-15");
+    });
+
+    it("keeps every obligation column aligned after the widening", () => {
+      // The header gained three columns, so an obligation row that was not
+      // re-aligned would put the agency under `detail` — a spreadsheet that is
+      // wrong rather than one that fails.
+      const [header, row] = toCsv([obligation]).trimEnd().split("\r\n");
+      const columns = header!.split(",");
+      const values = row!.split(",");
+
+      expect(values[columns.indexOf("agency")]).toBe("Washington Secretary of State");
+      expect(values[columns.indexOf("jurisdiction")]).toBe("US-WA");
+      expect(values[columns.indexOf("fee_minor_units")]).toBe("6000");
+      expect(values[columns.indexOf("rule_id")]).toBe(obligation.ruleId);
+      expect(values[columns.indexOf("source")]).toBe("rule");
+    });
+
+    it("neutralises a formula in an action's own fields too", () => {
+      const injected: CalendarAction = {
+        id: "act-4",
+        title: "=HYPERLINK(\"http://evil\",\"click\")",
+        dueOn: "2026-05-01",
+      };
+      expect(toCsv([injected])).toContain("\"'=HYPERLINK");
+    });
+  });
+
+  it("classifies the two kinds structurally, with no flag a caller could set wrongly", () => {
+    expect(isCalendarAction(action)).toBe(true);
+    expect(isCalendarAction(obligation)).toBe(false);
   });
 });

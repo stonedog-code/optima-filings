@@ -12,6 +12,8 @@
 
 import type { Obligation } from "@optima-compliance/engine";
 
+import { isCalendarAction, type CalendarAction } from "./action.js";
+
 /**
  * The UID domain.
  *
@@ -52,6 +54,24 @@ export interface ICalendarOptions {
  */
 export function obligationUid(obligation: Obligation): string {
   return `${obligation.ruleId}-${obligation.dueOn}@${UID_DOMAIN}`;
+}
+
+/**
+ * A stable, unique UID for one user-authored action.
+ *
+ * A SEPARATE NAMESPACE from `obligationUid`, and that is the point. The two are
+ * generated from different id spaces, so without the prefix a rule id and an
+ * action id could collide and one event would silently overwrite the other in
+ * the importing client.
+ *
+ * Keyed on the id alone, not on the due date — unlike an obligation. An
+ * obligation recurs and each occurrence is its own event; an action is one
+ * thing a person wrote down, and its date is editable. Keying on the date would
+ * make correcting a typo produce a SECOND event rather than moving the first,
+ * which is the failure a user notices and never forgives.
+ */
+export function actionUid(action: CalendarAction): string {
+  return `action-${action.id}@${UID_DOMAIN}`;
 }
 
 /** `YYYY-MM-DD` → `YYYYMMDD`, the iCalendar DATE form. */
@@ -143,8 +163,30 @@ function alarms(daysBefore: readonly number[]): string[] {
   ]);
 }
 
+/**
+ * Serialise deadlines — BOTH kinds — to an iCalendar file.
+ *
+ * ## The parameter was widened, not replaced (NEH-1147)
+ *
+ * It took `readonly Obligation[]` and this package is published at 0.1.0 with
+ * an external consumer, so the signature could not break. Widening is safe in
+ * the direction that matters: `readonly Obligation[]` is still assignable to
+ * `readonly (Obligation | CalendarAction)[]`, so every existing caller compiles
+ * and behaves identically.
+ *
+ * The alternative shapes were both worse. Putting the actions on
+ * `ICalendarOptions` conflates payload with configuration; a second exported
+ * function duplicates the whole emit loop to reach the same file.
+ *
+ * ## Why user actions belong in here at all
+ *
+ * The self-hosted export served obligations only, so a person who recorded
+ * "respond to this IRS letter by 15 September" saw it on the dashboard and NOT
+ * in the calendar they subscribed to. The file succeeded and looked complete,
+ * which is the worst way for a compliance product to be wrong.
+ */
 export function toICalendar(
-  obligations: readonly Obligation[],
+  items: readonly (Obligation | CalendarAction)[],
   options: ICalendarOptions,
 ): string {
   const { dtstamp, calendarName = "Compliance", reminderDaysBefore } = options;
@@ -158,23 +200,27 @@ export function toICalendar(
     `X-WR-CALNAME:${escapeText(calendarName)}`,
   ];
 
-  for (const obligation of obligations) {
+  for (const item of items) {
+    const action = isCalendarAction(item);
     lines.push(
       "BEGIN:VEVENT",
-      `UID:${obligationUid(obligation)}`,
+      `UID:${action ? actionUid(item) : obligationUid(item)}`,
       `DTSTAMP:${dtstamp}`,
       // All-day, because a filing deadline is a civil date in the filing
       // jurisdiction rather than an instant. A timed event would land on the
       // wrong day for anyone whose calendar is in another timezone.
-      `DTSTART;VALUE=DATE:${toIcalDate(obligation.dueOn)}`,
+      `DTSTART;VALUE=DATE:${toIcalDate(item.dueOn)}`,
       // DTEND is exclusive in iCalendar, so a one-day event ends the next day.
       // Setting it equal to DTSTART produces a zero-length event that several
       // clients silently refuse to display.
-      `DTEND;VALUE=DATE:${toIcalDate(nextDay(obligation.dueOn))}`,
-      `SUMMARY:${escapeText(summarise(obligation))}`,
-      `DESCRIPTION:${escapeText(describe(obligation))}`,
+      `DTEND;VALUE=DATE:${toIcalDate(nextDay(item.dueOn))}`,
+      `SUMMARY:${escapeText(action ? summariseAction(item) : summarise(item))}`,
+      `DESCRIPTION:${escapeText(action ? describeAction(item) : describe(item))}`,
       "TRANSP:TRANSPARENT",
-      ...(reminderDaysBefore ? alarms(reminderDaysBefore) : []),
+      // No alarm on something already done. A completed action is exported so a
+      // re-import can CORRECT the calendar (see `summariseAction`), not so it
+      // can page somebody about it again.
+      ...(reminderDaysBefore && !(action && item.completedOn) ? alarms(reminderDaysBefore) : []),
       "END:VEVENT",
     );
   }
@@ -189,6 +235,40 @@ export function toICalendar(
 function summarise(obligation: Obligation): string {
   const marker = obligation.status === "draft" ? " [unverified]" : "";
   return `${obligation.jurisdiction}: ${obligation.title}${marker}`;
+}
+
+/**
+ * What a user's own reminder is called in their calendar.
+ *
+ * **No jurisdiction prefix.** An obligation leads with `US-WA:` because the
+ * product is asserting which agency imposes it; a note somebody typed has no
+ * such backing, and borrowing the format would dress it up as one.
+ *
+ * ## Completed actions are EXPORTED, and marked
+ *
+ * Excluding them is the tempting choice and it is the wrong one for a
+ * DOWNLOADED file. iCalendar `PUBLISH` has no delete semantic, so omitting a
+ * completed action does not remove the event an earlier export already put on
+ * the user's calendar — it leaves it there, still reading as due, for ever.
+ * Exporting it with the marker means a re-import UPDATES that event to the
+ * truth, which is the whole reason the UIDs are stable.
+ */
+function summariseAction(action: CalendarAction): string {
+  return action.completedOn ? `✓ ${action.title}` : action.title;
+}
+
+function describeAction(action: CalendarAction): string {
+  const lines = [
+    action.detail,
+    action.completedOn ? `Completed: ${action.completedOn}` : undefined,
+    // Says where it came from, because the calendar shows both kinds side by
+    // side and a reader six months from now has no other way to tell which
+    // dates the rules engine stands behind and which are their own notes.
+    "Your own reminder — not derived from a rule.",
+    "",
+    "Not legal or tax advice.",
+  ];
+  return lines.filter((line) => line !== undefined).join("\n");
 }
 
 /**

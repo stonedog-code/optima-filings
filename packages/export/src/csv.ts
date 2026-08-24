@@ -7,7 +7,26 @@
 
 import type { Obligation } from "@optima-compliance/engine";
 
+import { isCalendarAction, type CalendarAction } from "./action.js";
+
+/**
+ * The columns, and the ORDER IS A COMPATIBILITY CONTRACT (NEH-1147).
+ *
+ * The three new columns are APPENDED, never inserted, and that is deliberate
+ * even though `source` is the one a reader most wants early.
+ *
+ * `apps/cli` writes this straight to stdout, where `cut -d, -f2` is an entirely
+ * ordinary thing for somebody to have written. Inserting a column mid-row keeps
+ * every such script running and starts feeding it the wrong field — a
+ * positional reader expecting `jurisdiction` at index 1 would silently get the
+ * literal `rule`. Wrong-but-running is a far worse outcome than a missing
+ * column, and it is the exact failure shape this issue was about.
+ *
+ * A header-aware reader finds a column wherever it is, so nothing is lost by
+ * appending except the human's scroll distance.
+ */
 const HEADERS = [
+  // --- the original twelve, in their original positions. Do not reorder. ---
   "due_on",
   "jurisdiction",
   "title",
@@ -20,6 +39,15 @@ const HEADERS = [
   "status",
   "last_verified",
   "rule_id",
+  // --- appended for user-authored rows ---
+  // `source` names which kind of claim a row is. The export carries deadlines
+  // the engine derived from a cited statute alongside reminders the customer
+  // typed, and a spreadsheet that renders them identically overstates one of
+  // them. Every provenance cell being empty is a weak signal; a named column is
+  // not.
+  "source",
+  "detail",
+  "completed_on",
 ] as const;
 
 /**
@@ -51,28 +79,67 @@ function field(value: string | number | undefined): string {
     : text;
 }
 
-export function toCsv(obligations: readonly Obligation[]): string {
+/**
+ * Serialise deadlines — BOTH kinds — to a spreadsheet.
+ *
+ * The parameter was WIDENED rather than replaced, for the reason `toICalendar`
+ * gives: this package is published and has an external consumer, and
+ * `readonly Obligation[]` stays assignable to the union.
+ *
+ * A user-authored row fills `due_on`, `source`, `title`, `detail` and
+ * `completed_on` and leaves the provenance columns EMPTY. That asymmetry is
+ * the honest rendering — a reminder has no agency, no fee and no statute, and
+ * inventing placeholders would make it look like a claim the product stands
+ * behind.
+ */
+export function toCsv(items: readonly (Obligation | CalendarAction)[]): string {
   const rows = [
     HEADERS.join(","),
-    ...obligations.map((o) =>
-      [
-        o.dueOn,
-        o.jurisdiction,
-        o.title,
-        o.agency,
-        o.form,
-        // Minor units, not dollars. A spreadsheet reading "60.00" may reformat
-        // or round it; an integer count of cents survives every round trip, and
-        // the header names the unit so nobody misreads 6000 as six thousand
-        // dollars.
-        o.feeMinorUnits,
-        o.currency,
-        o.citation,
-        o.citationUrl,
-        o.status,
-        o.lastVerified,
-        o.ruleId,
-      ]
+    ...items.map((item) =>
+      (isCalendarAction(item)
+        ? [
+            item.dueOn,
+            // The ten provenance columns stay EMPTY rather than carrying
+            // placeholders. A reminder has no agency, no fee and no statute,
+            // and inventing values would make it look like a claim the product
+            // stands behind.
+            undefined, // jurisdiction
+            item.title,
+            undefined, // agency
+            undefined, // form
+            undefined, // fee_minor_units
+            undefined, // currency
+            undefined, // citation
+            undefined, // citation_url
+            undefined, // status
+            undefined, // last_verified
+            undefined, // rule_id
+            "user",
+            item.detail,
+            item.completedOn,
+          ]
+        : [
+            item.dueOn,
+            item.jurisdiction,
+            item.title,
+            item.agency,
+            item.form,
+            // Minor units, not dollars. A spreadsheet reading "60.00" may
+            // reformat or round it; an integer count of cents survives every
+            // round trip, and the header names the unit so nobody misreads
+            // 6000 as six thousand dollars.
+            item.feeMinorUnits,
+            item.currency,
+            item.citation,
+            item.citationUrl,
+            item.status,
+            item.lastVerified,
+            item.ruleId,
+            "rule",
+            undefined, // detail — user rows only
+            undefined, // completed_on — an obligation is computed, never completed
+          ]
+      )
         .map(field)
         .join(","),
     ),
