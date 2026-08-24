@@ -201,12 +201,62 @@ describe("alarms", () => {
 
 describe("toCsv", () => {
   it("writes a header row", () => {
-    // The contiguous run changed in NEH-1147: `source` was inserted after
-    // `due_on` so a reader can tell a statute-backed deadline from the
-    // customer's own note, and `detail`/`completed_on` follow `title` for the
-    // user rows. Asserted as a run rather than a set so a reordering that
-    // silently shifts every obligation column one to the left still fails here.
-    expect(toCsv([]).split("\r\n")[0]).toContain("due_on,source,jurisdiction,title,detail,completed_on");
+    expect(toCsv([]).split("\r\n")[0]).toContain("due_on,jurisdiction,title");
+  });
+
+  it("keeps the original twelve columns at their original indices", () => {
+    // A COMPATIBILITY CONTRACT, not a formatting preference (NEH-1147).
+    //
+    // `apps/cli` writes this to stdout, so somebody's `cut -d, -f2` is a
+    // realistic consumer. Inserting a column mid-row would keep every such
+    // script RUNNING while feeding it the wrong field — the widening was
+    // reviewed and this is the flaw the review caught.
+    //
+    // Written as an exact positional list rather than `toContain`, so an
+    // insertion anywhere in the run fails here rather than only at the seam.
+    const columns = toCsv([]).split("\r\n")[0]!.split(",");
+
+    expect(columns.slice(0, 12)).toEqual([
+      "due_on",
+      "jurisdiction",
+      "title",
+      "agency",
+      "form",
+      "fee_minor_units",
+      "currency",
+      "citation",
+      "citation_url",
+      "status",
+      "last_verified",
+      "rule_id",
+    ]);
+  });
+
+  it("appends the new columns after them", () => {
+    const columns = toCsv([]).split("\r\n")[0]!.split(",");
+    expect(columns.slice(12)).toEqual(["source", "detail", "completed_on"]);
+  });
+
+  it("leaves an obligation row's original twelve values where they were", () => {
+    // The header staying put is half of it; the ROW has to match. A row built
+    // from a different list than the header is the silent misalignment this
+    // pair exists to catch.
+    const values = toCsv([obligation]).split("\r\n")[1]!.split(",");
+
+    expect(values.slice(0, 12)).toEqual([
+      "2026-03-31",
+      "US-WA",
+      "Nonprofit Corporation Annual Report",
+      "Washington Secretary of State",
+      "",
+      "6000",
+      "USD",
+      "RCW 24.03A.1010",
+      "",
+      "active",
+      "2026-08-01",
+      "us-wa-sos-nonprofit-annual-report",
+    ]);
   });
 
   it("names the fee unit in the header so nobody misreads 6000", () => {
@@ -352,9 +402,11 @@ describe("user-authored actions in the export — NEH-1147", () => {
 
     it("names the source, so the two are not read as one kind of claim", () => {
       const lines = toCsv([obligation, action]).trimEnd().split("\r\n");
-      expect(lines[0]).toContain("source");
-      expect(lines[1]).toContain("rule");
-      expect(lines[2]).toContain("user");
+      const source = lines[0]!.split(",").indexOf("source");
+
+      expect(source).toBeGreaterThan(-1);
+      expect(lines[1]!.split(",")[source]).toBe("rule");
+      expect(lines[2]!.split(",")[source]).toBe("user");
     });
 
     it("leaves the provenance columns empty on a user row rather than inventing them", () => {

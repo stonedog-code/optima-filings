@@ -9,19 +9,27 @@ import type { Obligation } from "@optima-compliance/engine";
 
 import { isCalendarAction, type CalendarAction } from "./action.js";
 
+/**
+ * The columns, and the ORDER IS A COMPATIBILITY CONTRACT (NEH-1147).
+ *
+ * The three new columns are APPENDED, never inserted, and that is deliberate
+ * even though `source` is the one a reader most wants early.
+ *
+ * `apps/cli` writes this straight to stdout, where `cut -d, -f2` is an entirely
+ * ordinary thing for somebody to have written. Inserting a column mid-row keeps
+ * every such script running and starts feeding it the wrong field — a
+ * positional reader expecting `jurisdiction` at index 1 would silently get the
+ * literal `rule`. Wrong-but-running is a far worse outcome than a missing
+ * column, and it is the exact failure shape this issue was about.
+ *
+ * A header-aware reader finds a column wherever it is, so nothing is lost by
+ * appending except the human's scroll distance.
+ */
 const HEADERS = [
+  // --- the original twelve, in their original positions. Do not reorder. ---
   "due_on",
-  // FIRST, and it is the most important column in the file (NEH-1147). The
-  // export now carries two kinds of row — deadlines the engine derived from a
-  // cited statute, and reminders the customer typed — and a spreadsheet that
-  // renders them identically overstates one of them. Every column after
-  // `title` is empty for a user row, which is a weak signal; a named one is
-  // not.
-  "source",
   "jurisdiction",
   "title",
-  "detail",
-  "completed_on",
   "agency",
   "form",
   "fee_minor_units",
@@ -31,6 +39,15 @@ const HEADERS = [
   "status",
   "last_verified",
   "rule_id",
+  // --- appended for user-authored rows ---
+  // `source` names which kind of claim a row is. The export carries deadlines
+  // the engine derived from a cited statute alongside reminders the customer
+  // typed, and a spreadsheet that renders them identically overstates one of
+  // them. Every provenance cell being empty is a weak signal; a named column is
+  // not.
+  "source",
+  "detail",
+  "completed_on",
 ] as const;
 
 /**
@@ -82,28 +99,29 @@ export function toCsv(items: readonly (Obligation | CalendarAction)[]): string {
       (isCalendarAction(item)
         ? [
             item.dueOn,
-            "user",
-            undefined,
+            // The ten provenance columns stay EMPTY rather than carrying
+            // placeholders. A reminder has no agency, no fee and no statute,
+            // and inventing values would make it look like a claim the product
+            // stands behind.
+            undefined, // jurisdiction
             item.title,
+            undefined, // agency
+            undefined, // form
+            undefined, // fee_minor_units
+            undefined, // currency
+            undefined, // citation
+            undefined, // citation_url
+            undefined, // status
+            undefined, // last_verified
+            undefined, // rule_id
+            "user",
             item.detail,
             item.completedOn,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
           ]
         : [
             item.dueOn,
-            "rule",
             item.jurisdiction,
             item.title,
-            undefined,
-            undefined,
             item.agency,
             item.form,
             // Minor units, not dollars. A spreadsheet reading "60.00" may
@@ -117,6 +135,9 @@ export function toCsv(items: readonly (Obligation | CalendarAction)[]): string {
             item.status,
             item.lastVerified,
             item.ruleId,
+            "rule",
+            undefined, // detail — user rows only
+            undefined, // completed_on — an obligation is computed, never completed
           ]
       )
         .map(field)
