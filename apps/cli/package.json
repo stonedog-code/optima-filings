@@ -20,7 +20,7 @@
   "dependencies": {
     "@optima-compliance/engine": "0.5.0",
     "@optima-compliance/rules": "2026.8.8",
-    "@optima-compliance/export": "0.1.0"
+    "@optima-compliance/export": "0.2.0"
   },
   "engines": {
     "node": ">=22"
