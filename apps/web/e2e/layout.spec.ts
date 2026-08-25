@@ -118,17 +118,22 @@ test("the entity form can be completed with the keyboard alone", async ({
   await expect(name).toHaveValue("Keyboard Only Association");
 });
 
-test.fixme("interactive controls are large enough to tap", async ({ page }) => {
-  // FAILS TODAY at 21px against a 24px floor — this is NEH-380.
+test("interactive controls are large enough to tap", async ({ page }) => {
+  // Was `test.fixme` at 21px against a 24px floor. The assertion is UNCHANGED;
+  // only the pin came off — the same property that made the skip-link test
+  // above worth writing before the fix existed.
   //
   // WCAG 2.2 Target Size (Minimum), 2.5.8, is 24×24 CSS pixels. Measured, not
   // assumed: this is precisely the assertion a zero-sized jsdom box passes
   // while the real control is too small, which is why it went unnoticed.
   //
-  // Three pixels is not a rounding error on a phone. It is also a shared
-  // design-system question rather than a page one — the button comes from
-  // `@stonedogcode/style`, so the fix belongs upstream and affects HopperGuard too,
-  // which is exactly why this is filed rather than patched here.
+  // **The comment this replaces named the wrong cause, confidently.** It said
+  // the button came from `@stonedogcode/style` so the fix belonged upstream and
+  // affected HopperGuard too. It did not. The design system has enforced a
+  // 48px floor since 2026-08-02, and the button's own markup asks for
+  // `min-h_44px`; it measured 21px because this app never served the Panda
+  // stylesheet at all (NEH-1173). The fix was one import here, not a package
+  // release, and nothing about it touches HopperGuard.
   await page.goto("/entities/new");
   const submit = page.getByRole("button", { name: /add|save|create/i }).first();
   const box = await submit.boundingBox();

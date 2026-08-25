@@ -7,7 +7,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prepare:panda": "panda codegen",
+    "//prepare:panda": "codegen writes the TYPINGS (styled-system/css, /jsx, /recipes, /tokens); cssgen writes the STYLESHEET. They are separate commands and only the first was run, so the app shipped every Panda class name with no rule behind it (NEH-1173). src/styles.css imports what cssgen emits.",
+    "prepare:panda": "panda codegen && panda cssgen",
     "predev": "npm run prepare:packages && npm run prepare:panda",
     "dev": "next dev",
     "prebuild": "npm run prepare:packages && npm run prepare:panda",
