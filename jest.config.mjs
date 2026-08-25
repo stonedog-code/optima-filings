@@ -37,14 +37,37 @@ export default {
     "^@/(.*)$": "<rootDir>/apps/web/src/$1",
     "^@optima-compliance/reminders$": "<rootDir>/packages/reminders/src/index.ts",
     "^@optima-compliance/export$": "<rootDir>/packages/export/src/index.ts",
-    // @stonedogcode/style is a SUBMODULE shipping TypeScript source, so both entry
-    // points map to source too. Its `preset` entry runs in Node at build time
-    // and is what the theme-completeness test reads.
-    "^@stonedogcode/style/preset$": "<rootDir>/packages/stonedog-style/src/preset/index.ts",
-    "^@stonedogcode/style$": "<rootDir>/packages/stonedog-style/src/index.ts",
+    // @stonedogcode/style is INSTALLED FROM npm (NEH-1004) and ships TypeScript
+    // source rather than a bundle, so both entry points map to that source. The
+    // mapper is still needed after the move off the submodule: ts-jest has no
+    // "exports" resolver, so `@stonedogcode/style/preset` — a subpath that
+    // exists only in the package's `exports` map — does not resolve on its own.
+    // Its `preset` entry runs in Node at build time and is what the
+    // theme-completeness test reads.
+    "^@stonedogcode/style/preset$":
+      "<rootDir>/node_modules/@stonedogcode/style/src/preset/index.ts",
+    "^@stonedogcode/style$": "<rootDir>/node_modules/@stonedogcode/style/src/index.ts",
     "^(\\.{1,2}/.*)\\.js$": "$1",
   },
   transform: {
     "^.+\\.tsx?$": ["ts-jest", { tsconfig: "<rootDir>/tsconfig.test.json" }],
   },
+  /**
+   * `@stonedogcode/style` is the one dependency that must be TRANSFORMED rather
+   * than required as-is, and it is the direct consequence of installing it from
+   * the registry (NEH-1004).
+   *
+   * The package ships TypeScript SOURCE, not a bundle — Panda extracts styles
+   * by parsing source at the consumer's build, so a compiled `dist` would emit
+   * class names nobody generated CSS for. While it was a workspace submodule
+   * its files lived under `packages/`, outside jest's default
+   * `transformIgnorePatterns`, and ts-jest compiled them like any other source.
+   * Moving it into `node_modules` put it behind that default, and the failure
+   * names neither the package nor the move:
+   *
+   *     SyntaxError: Cannot use import statement outside a module
+   *
+   * which reads as an ESM/CJS misconfiguration in the test harness.
+   */
+  transformIgnorePatterns: ["/node_modules/(?!@stonedogcode/style/)"],
 };

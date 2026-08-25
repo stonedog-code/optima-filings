@@ -18,19 +18,17 @@ jobs:
   gate:
     runs-on: ubuntu-latest
     steps:
-      # `submodules: recursive` is load-bearing, not tidiness. Without it
-      # packages/stonedog-style is an EMPTY DIRECTORY here, and jest's
-      # moduleNameMapper points `@stonedogcode/style/preset` inside it — so
-      # packages/ui/test/theme.test.ts cannot load and the gate is red.
+      # NEH-249 needed `submodules: recursive` here, because
+      # packages/stonedog-style was a submodule that jest's moduleNameMapper
+      # pointed inside. NEH-1004 moved @stonedogcode/style to the registry and
+      # this repo now has NO submodules at all, so the option is gone with the
+      # thing it existed for. `npm ci` fetches the package.
       #
-      # It fails only in CI, because every local checkout has the submodule
-      # initialised. That divergence is exactly what the header above forbids,
-      # and it went unnoticed for eight runs: the submodule is imported by one
-      # suite out of fifteen, so the run still reads as broadly healthy and
-      # nothing in the message names a submodule. See NEH-249.
+      # The lesson survives the submodule: that failure showed up only in CI,
+      # because every local checkout had the directory populated. Anything the
+      # gate depends on must be fetched by a step the gate runs, not inherited
+      # from a developer's disk.
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -57,8 +55,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -87,11 +83,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      # Needed here too: `npm ci` runs @stonedogcode/style's `prepare`, which is
-      # `panda codegen` against its own source.
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: actions/setup-node@v4
         with:
           node-version: 24

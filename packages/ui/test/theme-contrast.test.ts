@@ -130,6 +130,75 @@ describe("recipe contrast", () => {
   });
 });
 
+describe("the meaning-carrying text colours", () => {
+  /**
+   * `textError`, `textWarning` and `textSuccess` are deliberately absent from
+   * the preset's `TEXT_BACKGROUND_PAIRS` — a meaning colour appears on whatever
+   * surface the message happens to sit on, so there is no single pairing to
+   * check it against. `RECIPE_CONTRAST_PAIRS` therefore does not reach them,
+   * and every assertion above sweeps straight past all three.
+   *
+   * That gap became load-bearing when `text-success-text` was added here for
+   * @stonedogcode/style 0.20.0 (NEH-1004): the completeness test proves the
+   * property exists, and nothing proved it was readable. A colour chosen by
+   * eye, defended in a comment, and checked by nobody is precisely the shape of
+   * claim this repo does not accept elsewhere.
+   *
+   * So: measure each against every surface it can land on. These are body text,
+   * so the bar is AA 4.5:1.
+   */
+  const MEANING_TEXT = ["text-error-text", "text-warning-text", "text-success-text"];
+  const SURFACES = [
+    "box-main-bg",
+    "box-primary-bg",
+    "box-secondary-bg",
+    "box-info-bg",
+  ];
+
+  it("has colours and surfaces to check", () => {
+    // Guards the guard: a renamed token would leave both lists filtering to
+    // nothing and every case below passing over an empty set.
+    for (const mode of Object.keys(MODES) as (keyof typeof MODES)[]) {
+      for (const token of MEANING_TEXT) expect(MODES[mode][token]).toBeDefined();
+      for (const surface of SURFACES) expect(MODES[mode][surface]).toBeDefined();
+    }
+    expect(MEANING_TEXT.length * SURFACES.length).toBe(12);
+  });
+
+  it.each(Object.keys(MODES) as (keyof typeof MODES)[])(
+    "%s reads at AA on every surface a message can sit on",
+    (mode) => {
+      const tokens = MODES[mode];
+      const failing = MEANING_TEXT.flatMap((fg) =>
+        SURFACES.map((bg) => ({
+          label: `${fg} on ${bg}`,
+          ratio: getContrastRatio(tokens[fg]!, tokens[bg]!),
+        })),
+      )
+        .filter((m) => m.ratio < AA)
+        .map((m) => `${m.label} = ${m.ratio.toFixed(2)}:1`);
+
+      // Named, not counted — same reasoning as the recipe sweep above.
+      expect(failing).toEqual([]);
+    },
+  );
+
+  it("does not claim the accent SURFACE for these", () => {
+    // `box-accent-bg` is excluded from SURFACES above on purpose, and saying so
+    // in a comment alone would let a later reader "complete" the list and turn
+    // a deliberate omission into a red build. In dark mode it is a saturated
+    // blue that none of the three meaning colours clears — nor does
+    // `text-pop-text`, which has shipped that way since NEH-275. A meaning
+    // message is not painted on the accent panel; if one ever is, that is a
+    // design decision that needs its own pairing, not a token retune.
+    const tokens = MODES.dark;
+    const onAccent = MEANING_TEXT.map((fg) =>
+      getContrastRatio(tokens[fg]!, tokens["box-accent-bg"]!),
+    );
+    expect(onAccent.every((r) => r < AA)).toBe(true);
+  });
+});
+
 describe("the accent surface, specifically", () => {
   it("reads correctly with its own text colour", () => {
     // The failure this file was written for was a *cross-group* pair, and the

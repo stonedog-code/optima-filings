@@ -24,7 +24,6 @@ packages/
   rules/         @optima-compliance/rules   — rule packs + JSON Schema, published as data
   db/            @optima-compliance/db      — SQLite persistence for self-host
   ui/            @optima-compliance/ui      — the Lucide icon set + app primitives
-  stonedog-style/  SUBMODULE → stonedog-code/stonedog-style (Apache-2.0)
 apps/
   web/                            — self-host dashboard, single-tenant
   cli/                            — `optima check`, rule linting, imports
@@ -39,9 +38,29 @@ fixture cases, embeddable in a browser, and safe to expose as the B2B API.
 Dependency direction is one-way: `web`/`cli` → `db` → `engine` ← `rules`, and
 `web` → `ui` → `@stonedogcode/style`. **`engine` imports nothing from the others.**
 
-`packages/stonedog-style` is a submodule, so a change to it is a PR in *that* repo
-followed by a pointer bump here — never an edit in place. It has three consumers;
-see the project file.
+**`@stonedogcode/style` is installed FROM npm, and this repo has no submodules
+at all** (NEH-1004). It used to be `packages/stonedog-style`, a submodule pinned
+at 0.10.1 while the registry served 0.20.0 — ten minor versions of a design
+system nobody was co-developing from here. The house rule is that a submodule is
+right while you are *changing* a package and wrong when you are only *using* it.
+
+So a change to the design system is a PR in `stonedog-code/stonedog-style`, a
+publish, and a version bump here — never an edit in place, and never a pointer
+bump. To work against an unpublished change, `npm link` it; that does not
+require the package to be a workspace member, and `apps/web/panda.config.ts`
+keeps its `exclude` patterns specifically so a linked source checkout does not
+drag spec and harness files into the stylesheet.
+
+**Three files have to agree about where the package lives**, and only the first
+fails loudly if it does not:
+
+| file | what it points at |
+|---|---|
+| `jest.config.mjs` | `moduleNameMapper` → `node_modules/@stonedogcode/style/src` (ts-jest has no `exports` resolver, so the `/preset` subpath needs it), plus `transformIgnorePatterns` — the package ships TS source and must be transformed rather than required |
+| `apps/web/panda.config.ts` | the `include` globs, at **both** node_modules paths |
+| `apps/web/next.config.mjs` | `transpilePackages`, for the same source-not-bundle reason |
+
+The Panda glob is the silent one. See "Design system & icons" below.
 
 ## Design system & icons
 
@@ -49,9 +68,12 @@ Primitives come from `@stonedogcode/style`. Wiring is four steps and two of them
 missed — read @stonedogcode/style's CLAUDE.md, but the short version: add
 `stonedogStylePreset()` to `presets` **alongside** `@pandacss/preset-base` and
 `@pandacss/preset-panda` (listing `presets` replaces Panda's defaults rather than
-extending them, and the loss is silent), add
-`./packages/stonedog-style/src/**/*.tsx` to the Panda `include` globs, and define
-the `--optima-*` custom properties — this repo passes `cssVarPrefix: "optima"`
+extending them, and the loss is silent), add **both**
+`./node_modules/@stonedogcode/style/src/**/*.tsx` and
+`../../node_modules/@stonedogcode/style/src/**/*.tsx` to the Panda `include`
+globs — npm workspaces hoist, so which one is real depends on version conflicts
+elsewhere in the tree and naming one is a config that is right in this checkout
+and wrong in the next — and define the `--optima-*` custom properties — this repo passes `cssVarPrefix: "optima"`
 (NEH-170), so the default `--hopper-*` namespace is NOT what it reads.
 
 **No Font Awesome. Ever.** `stonedog-icons` vendors licensed Pro artwork and this
@@ -398,6 +420,6 @@ while unreviewed rather than broad enough to look impressive.
   *depend* on this one, and any leak in the other direction muddies the licence
   story that the whole business model rests on.
 - **Nothing licensed-but-not-redistributable may land here** — Font Awesome Pro
-  above all. `packages/stonedog-style` is Apache-2.0 and safe; `stonedog-icons` is
+  above all. `@stonedogcode/style` is Apache-2.0 and safe; `stonedog-icons` is
   not and must never appear in this repo's dependency tree, submodules, or
   Docker image.
