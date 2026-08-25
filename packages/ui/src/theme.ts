@@ -29,9 +29,25 @@ export type ThemeTokens = Record<string, string>;
 
 export const LIGHT_THEME: ThemeTokens = {
   // Text that carries meaning on its own.
+  //
+  // `text-success-text` arrived with @stonedogcode/style 0.20.0 (upstream
+  // NEH-519). The contract could say failure and caution and not success, so
+  // consumers reached for `textAccent` — which is whatever a host sets it to,
+  // with nothing constraining it to read as positive, so a confirmation could
+  // land in an alarming colour.
+  //
+  // The value is `button-accent-hover-bg`'s green rather than a new colour: the
+  // palette already commits to that hue for "this went well", and a second
+  // green would be a second definition of the same idea. Measured against every
+  // light surface — 8.95:1 on the page, 8.48 / 7.95 on the primary and
+  // secondary panels — which is the band the other two meaning colours sit in
+  // (error 7.84, warning 7.41). Like them it is deliberately NOT paired to a
+  // background in the preset's TEXT_BACKGROUND_PAIRS: a meaning colour appears
+  // on whatever surface the message happens to sit on.
   "text-pop-text": "#0b4f78",
   "text-error-text": "#a3160f",
   "text-warning-text": "#7a4b00",
+  "text-success-text": "#07543e",
 
   // Surface text.
   "box-main-text": "#161b22",
@@ -104,6 +120,10 @@ export const DARK_THEME: ThemeTokens = {
   "text-pop-text": "#7cc4ee",
   "text-error-text": "#ff9c94",
   "text-warning-text": "#f0c674",
+  // `icon-accent-hover-bg`'s lighter green, for the same reason the light theme
+  // reuses the darker one. 10.05:1 on the page, 9.16 / 7.99 on the panels —
+  // alongside dark error (8.95) and warning (11.18).
+  "text-success-text": "#6fd4b0",
 
   "box-main-text": "#e7edf3",
   "box-primary-text": "#e7edf3",

@@ -30,6 +30,7 @@
     "node": ">=22"
   },
   "devDependencies": {
+    "@stonedogcode/style": "^0.20.0",
     "@stonedogcode/theme": "^0.3.0"
   }
 }

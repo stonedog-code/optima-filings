@@ -1,3 +1,0 @@
-[submodule "packages/stonedog-style"]
-	path = packages/stonedog-style
-	url = git@github.com:stonedog-code/stonedog-style.git

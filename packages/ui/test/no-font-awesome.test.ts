@@ -77,9 +77,17 @@ describe("no Font Awesome in a public, redistributed repo", () => {
   });
 
   it("declares no forbidden submodule", () => {
-    // @stonedogcode/style is a submodule here and is Apache-2.0, so it is fine.
-    // stonedog-icons never may be — and a submodule is the most likely way it
-    // would arrive, since that is how @stonedogcode/style got here.
+    // This repo has NO submodules as of NEH-1004 — @stonedogcode/style was the
+    // only one and is now installed from npm — so this case currently returns
+    // early and asserts nothing. It stays because a submodule is still the most
+    // likely way stonedog-icons would arrive: it is how @stonedogcode/style
+    // arrived, and the licensed artwork is exactly the thing somebody would
+    // vendor rather than publish.
+    //
+    // A case that passes over an empty set is normally the failure this repo
+    // guards against. It is acceptable here only because the emptiness is the
+    // subject: "there are no submodules" is the assertion, and the `.gitmodules`
+    // read is how it is measured.
     let gitmodules = "";
     try {
       gitmodules = readFileSync(join(REPO_ROOT, ".gitmodules"), "utf8");
@@ -103,9 +111,14 @@ describe("no Font Awesome in a public, redistributed repo", () => {
     )
       .split("\0")
       .filter(Boolean)
-      // The submodule's own contents are not this repo's tracked files, and
-      // this test file necessarily names every forbidden string itself.
-      .filter((f) => !f.startsWith("packages/stonedog-style/"))
+      // This test file necessarily names every forbidden string itself.
+      //
+      // A `packages/stonedog-style/` exemption used to sit here, because the
+      // submodule's contents are not this repo's tracked files. NEH-1004
+      // removed the submodule, so `git ls-files` no longer lists anything under
+      // that path and the filter is gone with it — deliberately, rather than
+      // left as a no-op: an exemption for a path that cannot exist is an
+      // exemption waiting to be re-earned by something else parked there.
       .filter((f) => !f.endsWith("no-font-awesome.test.ts"));
 
     const suspicious = tracked.filter((f) =>

@@ -28,7 +28,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "server-only": "^0.0.1",
-    "@stonedogcode/style": "*"
+    "@stonedogcode/style": "^0.20.0"
   },
   "devDependencies": {
     "@pandacss/dev": "^1.12.0",
