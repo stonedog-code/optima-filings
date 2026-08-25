@@ -70,7 +70,9 @@ describe("npm run dev starts the dashboard (NEH-807)", () => {
     expect(OPTIMA_DB_PATH).toBe(join(REPO_ROOT, "data", "optima.sqlite"));
     // The bug in one line: `/data` is correct for the image and unopenable
     // here, and nothing about the resulting error says so.
-    expect(OPTIMA_DB_PATH.startsWith("/data/")).toBe(false);
+    // Optional-chained because the record is indexed: an absent value yields
+    // `undefined`, which still fails this assertion rather than passing it.
+    expect(OPTIMA_DB_PATH?.startsWith("/data/")).toBe(false);
   });
 
   it("shows draft rules, or a local run renders an empty calendar", () => {

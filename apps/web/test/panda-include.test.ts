@@ -74,8 +74,7 @@ const crossPackage = includes.filter((g) => g.startsWith("../") || g.includes("n
  * starts matching the moment a dependency change moves the package.
  */
 function packageOf(glob: string): string {
-  const m = glob.match(/(?:node_modules|packages)\/(@[^/]+\/[^/]+|[^/]+)\//);
-  return m ? m[1] : glob;
+  return glob.match(/(?:node_modules|packages)\/(@[^/]+\/[^/]+|[^/]+)\//)?.[1] ?? glob;
 }
 
 const byPackage = crossPackage.reduce<Record<string, string[]>>((acc, glob) => {
@@ -100,10 +99,10 @@ function globBase(glob: string): string {
  * exact set".
  */
 function globExtensions(glob: string): string[] {
-  const braces = glob.match(/\*\.\{([^}]+)\}$/);
-  if (braces) return braces[1].split(",").map((e) => `.${e.trim()}`);
-  const single = glob.match(/\*\.([A-Za-z]+)$/);
-  return single ? [`.${single[1]}`] : [];
+  const braces = glob.match(/\*\.\{([^}]+)\}$/)?.[1];
+  if (braces) return braces.split(",").map((e) => `.${e.trim()}`);
+  const single = glob.match(/\*\.([A-Za-z]+)$/)?.[1];
+  return single ? [`.${single}`] : [];
 }
 
 function walk(dir: string, out: string[] = []): string[] {

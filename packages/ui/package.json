@@ -16,7 +16,8 @@
     "README.md"
   ],
   "scripts": {
-    "type-check": "tsc --noEmit"
+    "prepare:panda": "panda codegen",
+    "type-check": "panda codegen && tsc --noEmit"
   },
   "dependencies": {
     "lucide-react": "^0.460.0"
@@ -30,6 +31,7 @@
     "node": ">=22"
   },
   "devDependencies": {
+    "@pandacss/dev": "^1.12.0",
     "@stonedogcode/style": "^0.20.0",
     "@stonedogcode/theme": "^0.3.0"
   }
