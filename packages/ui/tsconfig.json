@@ -9,7 +9,12 @@
     "lib": ["ES2022", "DOM"],
     "moduleResolution": "Bundler",
     "module": "ESNext",
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "styled-system/*": ["./styled-system/*"]
+    }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "styled-system"],
+  "//": "The `styled-system/*` path mapping is load-bearing. @stonedogcode/style ships TypeScript SOURCE that imports the CONSUMER's generated styled-system/*, so tsc follows those imports into the dependency; without the mapping it can resolve none of them and reports errors that live entirely in somebody else's package. `panda codegen`, which the type-check script runs first, generates what this points at. NEH-1174 is the history."
 }

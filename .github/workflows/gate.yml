@@ -34,14 +34,18 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      # Rule validation and barrel freshness run FIRST. A schema-invalid or
-      # unregenerated rule produces confusing failures further down, and these
-      # two name the actual problem.
-      - run: npm run rules:validate
-      - run: npm run rules:barrel:check
-      - run: npm run type-check
-      - run: npm run lint
-      - run: npm test
+      # ONE step, deliberately. This file used to list the five gate steps by
+      # hand, and the header's promise above was then something a person had to
+      # keep true. It stopped being true without anyone noticing: `apps/web` and
+      # `packages/ui` each own a `type-check` that the root solution build does
+      # not reach, so both sat red on `main` for weeks, invisible here and
+      # invisible locally (NEH-1174).
+      #
+      # `scripts/gate.mjs` now owns the step list, prints a banner per step so a
+      # failure is still legible, and reports how many files each step examined
+      # — a count that stops moving is the only signal that a check has started
+      # passing over nothing.
+      - run: npm run gate
 
   e2e:
     # The tier jsdom cannot substitute for (NEH-373). It BLOCKS, like `gate` —

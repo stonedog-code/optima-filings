@@ -55,7 +55,11 @@ const warned = new Set<string>();
  */
 export function renamedEnv(
   suffix: string,
-  env: NodeJS.ProcessEnv = process.env,
+  // A string dictionary, not `NodeJS.ProcessEnv`. Next augments that interface
+  // with a REQUIRED `NODE_ENV`, so every caller passing a literal had to carry
+  // a variable this function never reads — and the five that did not were
+  // errors nothing gated (NEH-1174). `process.env` still satisfies this.
+  env: Record<string, string | undefined> = process.env,
 ): string | undefined {
   const current = env[`OPTIMA_${suffix}`];
   if (current !== undefined) return current;
