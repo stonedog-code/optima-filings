@@ -126,6 +126,38 @@ export interface EntityFacts {
    * report and is the one people most often miss.
    */
   solicitsCharitableContributions?: boolean;
+
+  /**
+   * Whether this 501(c)(3) is a **private foundation** rather than a public
+   * charity.
+   *
+   * A fact rather than an entity type, deliberately. `ENTITY_TYPES` values are
+   * permanent public identifiers persisted in every self-hoster's database and
+   * carried across the tier boundary, so adding one is a decision that cannot
+   * be taken back. Whether an organisation is a foundation is something we ask
+   * it — and a wrong answer is corrected by editing a field, not by migrating a
+   * vocabulary.
+   *
+   * **It has no default, and that is the whole point.** A private foundation is
+   * a 501(c)(3), so before this fact existed one with modest receipts matched
+   * `us-federal-form-990-n` and was told to file the e-Postcard — a return the
+   * IRS does not permit it to file at any receipts level, because it files Form
+   * 990-PF instead. Defaulting this to `false` would restore exactly that
+   * answer for every entity that has not been asked. Under-filing is the error
+   * direction this pack exists to avoid, so the 990 family is reported
+   * **indeterminate** until somebody answers, and the consumer is expected to
+   * ask.
+   *
+   * Public charity, foundation, and "nobody has told us" are three states, not
+   * two. Anything storing this must keep them three — a `NOT NULL DEFAULT 0`
+   * column collapses the third into the wrong one of the other two.
+   *
+   * Scope: it says nothing about 509(a)(3) **supporting organisations**, which
+   * the IRS excludes from Form 990-N under a separate and differently-shaped
+   * carve-out. See `docs/prd/private-foundation-fact.md` for why that needs its
+   * own fact and a change to the 990-EZ floor rather than a reuse of this one.
+   */
+  isPrivateFoundation?: boolean;
 }
 
 /** The fact names a rule condition is allowed to test. Enforced by the validator. */
@@ -135,6 +167,7 @@ export const CONDITIONABLE_FACTS = [
   "charitableAssetsMinorUnits",
   "employeeCount",
   "solicitsCharitableContributions",
+  "isPrivateFoundation",
 ] as const;
 export type ConditionableFact = (typeof CONDITIONABLE_FACTS)[number];
 

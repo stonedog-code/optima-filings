@@ -2,7 +2,11 @@
  * Copyright (C) 2026 StoneDogCode L.L.C.
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { dollarsToMinorUnits, parseEntityForm } from "../src/lib/parse-entity.js";
+import {
+  dollarsToMinorUnits,
+  parseEntityForm,
+  parseTriState,
+} from "../src/lib/parse-entity.js";
 
 function form(fields: Record<string, string | string[]>): FormData {
   const fd = new FormData();
@@ -138,4 +142,79 @@ describe("parseEntityForm", () => {
     if (!result.ok) return;
     expect(result.facts.entityTypes).toEqual(["501c3"]);
   });
+
+  /**
+   * The private-foundation question — NEH-1146.
+   *
+   * Three states, and the third is the one that has to survive the form. A
+   * private foundation may never file Form 990-N at any receipts level, so
+   * reading "nobody answered" as "not a foundation" is how the engine came to
+   * name that return for one. These assert the boundary where a form post
+   * becomes a fact, which is the layer a checkbox would have quietly collapsed.
+   */
+  describe("the private-foundation question", () => {
+    it("omits the fact entirely when nobody has answered", () => {
+      // Absent, not `false` and not `undefined` under a present key. The engine
+      // treats an absent fact as unknown and reports the 990 family as
+      // indeterminate; a `false` here decides it, wrongly, for every entity.
+      const result = parseEntityForm(form(valid));
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect("isPrivateFoundation" in result.facts).toBe(false);
+    });
+
+    it("reads an explicit yes as true", () => {
+      const result = parseEntityForm(form({ ...valid, isPrivateFoundation: "yes" }));
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.facts.isPrivateFoundation).toBe(true);
+    });
+
+    it("reads an explicit no as false, and keeps it distinct from unanswered", () => {
+      // "No" is a real answer that decides the family, and it must not be
+      // laundered back into "we never asked" — that would put the rule into
+      // indeterminate every time the customer edited an unrelated field.
+      const result = parseEntityForm(form({ ...valid, isPrivateFoundation: "no" }));
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.facts.isPrivateFoundation).toBe(false);
+      expect("isPrivateFoundation" in result.facts).toBe(true);
+    });
+
+    it("treats the empty selection as unanswered", () => {
+      // What the "I do not know yet" option actually posts.
+      const result = parseEntityForm(form({ ...valid, isPrivateFoundation: "" }));
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect("isPrivateFoundation" in result.facts).toBe(false);
+    });
+
+    it("treats anything it does not recognise as unanswered, never as no", () => {
+      // A hand-rolled POST, a renamed option, a stale cached page. The unsafe
+      // reading of an unknown value is "not a foundation"; the safe one is
+      // "we still need to ask".
+      for (const value of ["true", "false", "YES", "1", "maybe"]) {
+        const result = parseEntityForm(form({ ...valid, isPrivateFoundation: value }));
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+        expect("isPrivateFoundation" in result.facts).toBe(false);
+      }
+    });
+  });
+});
+
+describe("parseTriState", () => {
+  it.each([
+    ["yes", true],
+    ["no", false],
+  ] as const)("maps %s to %s", (input, expected) => {
+    expect(parseTriState(input)).toBe(expected);
+  });
+
+  it.each(["", "   ", "unknown", "true", "0", "Yes"])(
+    "maps %p to undefined rather than to a decision",
+    (input) => {
+      expect(parseTriState(input)).toBeUndefined();
+    },
+  );
 });

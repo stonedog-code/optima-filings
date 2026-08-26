@@ -31,6 +31,23 @@ export function dollarsToMinorUnits(input: string): number | undefined {
   return Math.round(value * 100);
 }
 
+/**
+ * A yes/no question that is allowed to go unanswered.
+ *
+ * **Not a checkbox, and that is the whole design.** A checkbox posts nothing
+ * when unticked, so an unanswered box and a deliberate "no" arrive identically
+ * — which is fine for `solicits`, where "no" is the safe reading, and wrong
+ * here. A private foundation may never file the 990-N e-Postcard at any income
+ * level, so reading an unanswered question as "not a foundation" is how the
+ * engine came to name that return for one. Three states in, three states out;
+ * anything unrecognised, including the empty string, is `undefined`.
+ */
+export function parseTriState(value: string): boolean | undefined {
+  if (value === "yes") return true;
+  if (value === "no") return false;
+  return undefined;
+}
+
 export function parseEntityForm(form: FormData): ParseResult {
   const text = (key: string) => String(form.get(key) ?? "").trim();
 
@@ -83,6 +100,8 @@ export function parseEntityForm(form: FormData): ParseResult {
     return { ok: false, error: `"${fiscalYearEnd}" is not a real month and day.` };
   }
 
+  const isPrivateFoundation = parseTriState(text("isPrivateFoundation"));
+
   const grossRevenueMinorUnits = dollarsToMinorUnits(text("grossRevenue"));
   const totalAssetsMinorUnits = dollarsToMinorUnits(text("totalAssets"));
   const charitableAssetsMinorUnits = dollarsToMinorUnits(text("charitableAssets"));
@@ -107,6 +126,7 @@ export function parseEntityForm(form: FormData): ParseResult {
       // An unticked box is genuinely "no", not "unknown" — the checkbox is
       // always present in the submission.
       solicitsCharitableContributions: form.get("solicits") === "true",
+      ...(isPrivateFoundation === undefined ? {} : { isPrivateFoundation }),
     },
   };
 }

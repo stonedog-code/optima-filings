@@ -180,4 +180,27 @@ export const MIGRATIONS: readonly { id: number; name: string; sql: string }[] = 
       CREATE INDEX idx_documents_type_date ON documents (type, document_date);
     `,
   },
+  {
+    id: 5,
+    name: "private_foundation",
+    sql: `
+      -- Whether a 501(c)(3) is a private foundation rather than a public
+      -- charity. A private foundation files Form 990-PF and may never file the
+      -- 990-N e-Postcard at any receipts level, so without this the engine
+      -- matched one on its receipts alone and named the wrong return.
+      --
+      -- NULLABLE, AND NULL IS THE POINT. Three states, not two: yes, no, and
+      -- nobody has been asked. Every row that predates this migration is the
+      -- third, and it is the only honest value for them — a
+      -- NOT NULL DEFAULT 0 would silently answer "public charity" on behalf of
+      -- every existing self-hoster, which is exactly the wrong answer for the
+      -- foundations this column exists to catch and restores the under-filing
+      -- it removes.
+      --
+      -- The engine reads an absent fact as indeterminate and reports the rule
+      -- with the question attached, so a NULL here produces "we need to ask
+      -- you something" rather than a wrong deadline.
+      ALTER TABLE entities ADD COLUMN is_private_foundation INTEGER;
+    `,
+  },
 ];

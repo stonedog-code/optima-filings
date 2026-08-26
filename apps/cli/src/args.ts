@@ -59,7 +59,8 @@ ENTITY FILE
     "jurisdictions": ["US", "US-WA"],
     "fiscalYearEnd": "12-31",
     "grossRevenueMinorUnits": 4200000,
-    "solicitsCharitableContributions": true
+    "solicitsCharitableContributions": true,
+    "isPrivateFoundation": false
   }
 
   Money is integer minor units: 4200000 is $42,000.00.

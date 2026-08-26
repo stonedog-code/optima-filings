@@ -1,0 +1,33 @@
+{
+  "$schema": "../../schema/rule.v1.json",
+  "id": "us-federal-form-990-pf",
+  "jurisdiction": "US",
+  "title": "Form 990-PF \u2014 Return of Private Foundation",
+  "agency": "Internal Revenue Service",
+  "entityTypes": [
+    "501c3"
+  ],
+  "cadence": {
+    "type": "annual",
+    "anchor": "fiscal-year-end",
+    "offsetMonths": 5,
+    "dayOfMonth": 15
+  },
+  "form": "990-PF",
+  "conditions": [
+    {
+      "fact": "isPrivateFoundation",
+      "op": "eq",
+      "value": true
+    }
+  ],
+  "citation": "26 U.S.C. 6033; IRS Instructions for Form 990-PF",
+  "citationUrl": "https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title26-section6033",
+  "agencyUrl": "https://www.irs.gov/forms-pubs/about-form-990-pf",
+  "lastVerified": "2026-08-26",
+  "status": "active",
+  "effectiveFrom": "2020-01-01",
+  "notes": "VERIFIED 2026-08-26 against irs.gov, for a rule that did not exist before (NEH-1146). WHO MUST FILE, from the Instructions for Form 990-PF: the return \"must be filed by\" private foundations exempt under section 501(a) and described in section 501(c)(3), taxable private foundations, organisations with a pending exemption application that agree to private foundation classification, and section 4947(a)(1) nonexempt charitable trusts treated as private foundations. THERE IS NO RECEIPTS OR ASSETS THRESHOLD \u2014 every private foundation files, at every size \u2014 which is why this rule's only condition is the foundation question itself. That is also what makes the gap this closes a real one: a foundation with modest receipts previously matched us-federal-form-990-n, a return the IRS lists it as not permitted to file. DUE DATE VERIFIED: \"the 15th day of the 5th month following the close of the foundation's tax year\", which is what this cadence produces \u2014 15 May for a calendar-year filer. WEEKEND RULE VERIFIED from the same instructions: \"If the regular due date falls on a Saturday, Sunday, or legal holiday, file by the next business day\", so roll-forward is opted into because the agency says it, and holidayCalendar us-federal applies the eleven federal holidays of 5 U.S.C. 6103(a) rather than treating a holiday as an ordinary weekday. SCOPE: entityTypes is [\"501c3\"] because that is the vocabulary this pack has. A section 4947(a)(1) nonexempt charitable trust is NOT a 501(c)(3) and cannot currently be modelled here at all; it is out of scope rather than silently covered. NO FEE: filing Form 990-PF costs nothing, and the field is absent rather than zero so a consumer renders \"\u2014\" instead of asserting $0.00. STATUS: active. docs/rule-verification/2026-08-26-private-foundations.md records exactly which pages were read, so a later verification pass can check this rule against the same sources rather than starting over.",
+  "weekendRule": "roll-forward",
+  "holidayCalendar": "us-federal"
+}
