@@ -2,8 +2,10 @@
  * Copyright (C) 2026 StoneDogCode L.L.C.
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import type { Obligation } from "@optima-compliance/engine";
+import { CONDITIONABLE_FACTS, type Obligation } from "@optima-compliance/engine";
 import {
+  CONDITIONABLE_FACT_LABELS,
+  describeMissingFacts,
   daysUntil,
   entityTypeLabel,
   formatDate,
@@ -205,5 +207,71 @@ describe("verificationNote", () => {
     expect(fresh).not.toBe(stale);
     expect(fresh).toMatch(/^Checked/);
     expect(stale).toMatch(/^Not checked/);
+  });
+});
+
+/**
+ * The words a customer reads when a rule cannot be decided — NEH-1146.
+ *
+ * The "cannot tell yet" section used to print raw identifiers:
+ * `needs isPrivateFoundation`. That is an error message, not a question, and it
+ * leaks the shape of the fact model onto a screen whose entire job is to ask
+ * somebody something they can answer.
+ */
+describe("conditionable fact labels", () => {
+  it("has a label for every fact the engine can condition on", () => {
+    // The `Record<ConditionableFact, string>` type already makes a missing
+    // label a compile error. This is the runtime half: it catches a label added
+    // as an empty string, or a key kept after the fact behind it was renamed —
+    // neither of which the type notices, and both of which render as a blank in
+    // the middle of a sentence.
+    expect(Object.keys(CONDITIONABLE_FACT_LABELS).sort()).toEqual(
+      [...CONDITIONABLE_FACTS].sort(),
+    );
+    for (const fact of CONDITIONABLE_FACTS) {
+      expect(CONDITIONABLE_FACT_LABELS[fact].trim().length).toBeGreaterThan(3);
+    }
+  });
+
+  it("never renders an identifier at a customer", () => {
+    // The actual failure being guarded: the fallback in `describeMissingFacts`
+    // exists so an unknown fact still renders SOMETHING, and it would happily
+    // render `isPrivateFoundation` forever if nobody checked.
+    for (const fact of CONDITIONABLE_FACTS) {
+      expect(describeMissingFacts([fact])).not.toBe(fact);
+      expect(describeMissingFacts([fact])).not.toMatch(/MinorUnits|^is[A-Z]/);
+    }
+  });
+
+  it("asks the private-foundation question in words somebody could answer", () => {
+    expect(describeMissingFacts(["isPrivateFoundation"])).toBe(
+      "whether you are a private foundation",
+    );
+  });
+
+  it("joins two facts as English, not as a CSV", () => {
+    // The common case for the 990 family, and the one that reads worst as a
+    // comma-separated list of field names.
+    expect(
+      describeMissingFacts(["grossRevenueMinorUnits", "totalAssetsMinorUnits"]),
+    ).toBe("your gross revenue and your total assets");
+  });
+
+  it("joins three with commas and a final and", () => {
+    expect(
+      describeMissingFacts([
+        "grossRevenueMinorUnits",
+        "totalAssetsMinorUnits",
+        "isPrivateFoundation",
+      ]),
+    ).toBe(
+      "your gross revenue, your total assets and whether you are a private foundation",
+    );
+  });
+
+  it("returns an empty string for an empty list rather than 'undefined'", () => {
+    // Defensive, and the failure it prevents is visible: the literal word
+    // "undefined" in the middle of a sentence on the dashboard.
+    expect(describeMissingFacts([])).toBe("");
   });
 });

@@ -26,3 +26,6 @@ data/
 apps/web/e2e/.artifacts/
 playwright-report/
 test-results/
+
+# PRDs live in the INTERNAL stonedog-prd repo, never here — this repo is PUBLIC.
+docs/prd

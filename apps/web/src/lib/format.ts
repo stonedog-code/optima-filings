@@ -5,7 +5,12 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { isStale, monthsSinceVerified, type Obligation } from "@optima-compliance/engine";
+import {
+  isStale,
+  monthsSinceVerified,
+  type ConditionableFact,
+  type Obligation,
+} from "@optima-compliance/engine";
 
 /**
  * Money, from integer minor units.
@@ -139,4 +144,40 @@ const JURISDICTION_LABELS: Record<string, string> = {
 
 export function jurisdictionLabel(jurisdiction: string): string {
   return JURISDICTION_LABELS[jurisdiction] ?? jurisdiction;
+}
+
+/**
+ * What to call the facts a rule can turn on, in the customer's words.
+ *
+ * Labels only — the identifiers are the engine's, imported rather than copied.
+ * Typed as `Record<ConditionableFact, string>` so the day the engine gains
+ * another conditionable fact this fails to compile, instead of rendering
+ * `isPrivateFoundation` at somebody reading their filing calendar.
+ *
+ * The wording answers the question the sentence around it asks, because a
+ * field name is not a question: "we need to know whether you are a private
+ * foundation" is something a reader can act on; the identifier is not.
+ */
+export const CONDITIONABLE_FACT_LABELS: Record<ConditionableFact, string> = {
+  grossRevenueMinorUnits: "your gross revenue",
+  totalAssetsMinorUnits: "your total assets",
+  charitableAssetsMinorUnits: "the charitable assets you hold",
+  employeeCount: "how many people you employ",
+  solicitsCharitableContributions: "whether you ask the public for donations",
+  isPrivateFoundation: "whether you are a private foundation",
+};
+
+/**
+ * "your gross revenue and your total assets" — an English list, not a CSV.
+ *
+ * A rule needing two facts is the common case for the 990 family, and
+ * `grossRevenueMinorUnits, totalAssetsMinorUnits` in a sentence reads as an
+ * error message rather than as a question somebody could answer.
+ */
+export function describeMissingFacts(facts: readonly string[]): string {
+  const labels = facts.map(
+    (fact) => CONDITIONABLE_FACT_LABELS[fact as ConditionableFact] ?? fact,
+  );
+  if (labels.length <= 1) return labels[0] ?? "";
+  return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
 }

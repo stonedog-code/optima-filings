@@ -32,10 +32,26 @@
  */
 import { ENTITY_TYPES } from "@optima-compliance/engine";
 import type { StoredEntity } from "@optima-compliance/db";
-import { StyledFormLabel, StyledInputText, StyledInputBool } from "@optima-compliance/ui";
+import {
+  StyledFormLabel,
+  StyledInputText,
+  StyledInputBool,
+  StyledInputSelect,
+} from "@optima-compliance/ui";
 import { css } from "styled-system/css";
 import { entityTypeLabel } from "@/lib/format";
 import { fieldClass, hintClass, labelClass } from "./action-fields";
+
+/**
+ * A tri-state answer back to the select's value.
+ *
+ * `""` is the unanswered state and it round-trips as itself: an entity nobody
+ * has asked must come back into the form still unanswered, or editing any
+ * other field would quietly answer this one.
+ */
+function triStateValue(value: boolean | undefined): string {
+  return value === true ? "yes" : value === false ? "no" : "";
+}
 
 /** Minor units back to a decimal string for an editable field. */
 function toDollars(minorUnits: number | undefined): string {
@@ -202,6 +218,40 @@ export function EntityFormFields({ entity }: { entity?: StoredEntity }) {
           total assets</strong>. Several states require charity registration
           above a threshold on this figure alone, even for an organisation that
           never asks the public for money.
+        </span>
+      </div>
+
+      <div className={fieldClass}>
+        {/*
+          A select, not a checkbox, and not because a dropdown looks better.
+          A checkbox has two states and this question has three: yes, no, and
+          nobody has been asked. An unticked box posts nothing, so an entity
+          created before the question existed would arrive as a firm "not a
+          foundation" — and a private foundation read that way is told to file
+          the 990-N e-Postcard, which it may never file at any income level.
+          The unanswered state has to survive the form, so it needs a value of
+          its own.
+        */}
+        <StyledFormLabel htmlFor="entity-private-foundation" optional>
+          Private foundation
+        </StyledFormLabel>
+        <StyledInputSelect
+          id="entity-private-foundation"
+          name="isPrivateFoundation"
+          defaultValue={triStateValue(entity?.isPrivateFoundation)}
+          aria-describedby="entity-private-foundation-hint"
+          options={[
+            { value: "", label: "I do not know yet" },
+            { value: "no", label: "No — a public charity" },
+            { value: "yes", label: "Yes — a private foundation" },
+          ]}
+        />
+        <span className={hintClass} id="entity-private-foundation-hint">
+          For 501(c)(3) organisations. Which federal return you file turns on
+          this: a private foundation files <strong>Form 990-PF</strong> whatever
+          its income, and cannot use the 990-N e-Postcard or Form 990.{" "}
+          <strong>Leave it blank if you do not know</strong> — the 990 family is
+          then reported as “cannot tell yet” rather than being decided for you.
         </span>
       </div>
 

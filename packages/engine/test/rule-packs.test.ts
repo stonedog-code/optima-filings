@@ -800,6 +800,11 @@ describe("the 990 family is mutually exclusive", () => {
     "us-federal-form-990",
     "us-federal-form-990-ez",
     "us-federal-form-990-n",
+    // Added with the rule (NEH-1146). Leaving it out would have made the
+    // invariant weaker exactly where it was newly at risk: a foundation could
+    // owe 990-PF *and* one of the other three and this suite would have
+    // reported one return, because it was only counting three of the four.
+    "us-federal-form-990-pf",
   ];
 
   function familyOwedBy(facts: EntityFacts): string[] {
@@ -892,6 +897,183 @@ describe("the 990 family is mutually exclusive", () => {
       }
     }
     expect(gaps).toEqual([]);
+  });
+
+  /**
+   * The same two halves again, for a PRIVATE FOUNDATION — NEH-1146.
+   *
+   * Excluding foundations from 990-N, 990-EZ and 990 without shipping 990-PF
+   * would have swapped a wrong return for **no** return, which is the same
+   * under-filing wearing a clean calendar. Asserting exclusivity alone cannot
+   * catch that: zero rules firing satisfies "at most one" perfectly.
+   *
+   * The grid matters more here than for a public charity, because a foundation
+   * files 990-PF at EVERY size. If any threshold on the other three ever stops
+   * excluding foundations, some cell of this grid fires two returns; if 990-PF
+   * ever grows a threshold, some cell fires none.
+   */
+  it("fires exactly the 990-PF for a private foundation, at every size", () => {
+    const wrong: string[] = [];
+    for (const grossRevenueMinorUnits of [0, 5_000_000, 5_000_001, 20_000_000, 500_000_000]) {
+      for (const totalAssetsMinorUnits of [0, 50_000_000, 900_000_000]) {
+        const owed = familyOwedBy({
+          ...fixtures.PRIVATE_FOUNDATION,
+          grossRevenueMinorUnits,
+          totalAssetsMinorUnits,
+        });
+        if (owed.join() !== "us-federal-form-990-pf") {
+          wrong.push(
+            `revenue ${grossRevenueMinorUnits} / assets ${totalAssetsMinorUnits} -> ${owed.length === 0 ? "NOTHING" : owed.join(" + ")}`,
+          );
+        }
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  /**
+   * And the third state: nobody has answered.
+   *
+   * The whole family must be UNDECIDED, not decided. A `false` default would
+   * make every cell here fire a return — the pre-NEH-1146 behaviour — and this
+   * is the assertion that would go red if one were ever introduced, at the
+   * fact model, at the parser, or at a database column default.
+   */
+  it("decides NO federal return while the foundation question is unanswered", () => {
+    const decided: string[] = [];
+    for (const grossRevenueMinorUnits of [0, 5_000_000, 20_000_000, 500_000_000]) {
+      for (const totalAssetsMinorUnits of [0, 50_000_000, 900_000_000]) {
+        const owed = familyOwedBy({
+          ...fixtures.FOUNDATION_QUESTION_UNANSWERED,
+          grossRevenueMinorUnits,
+          totalAssetsMinorUnits,
+        });
+        if (owed.length !== 0) {
+          decided.push(
+            `revenue ${grossRevenueMinorUnits} / assets ${totalAssetsMinorUnits} -> ${owed.join(" + ")}`,
+          );
+        }
+      }
+    }
+    expect(decided).toEqual([]);
+  });
+});
+
+/**
+ * A private foundation is never told to file Form 990-N — NEH-1146.
+ *
+ * The defect, verbatim from the report: a private foundation IS a 501(c)(3), so
+ * one entered with low receipts matched `us-federal-form-990-n` and was given a
+ * date for the e-Postcard. The IRS lists private foundations among the
+ * organisations **not permitted to file** Form 990-N, at any receipts level —
+ * they file Form 990-PF. Naming a return somebody may not file is under-filing,
+ * the error direction this pack's own notes say it exists to avoid.
+ *
+ * Modelled as a conditionable FACT rather than as new entity types, because
+ * `ENTITY_TYPES` values are permanent public identifiers persisted in both
+ * tiers, and a fact is answerable, correctable and reversible.
+ */
+describe("a private foundation", () => {
+  const asOf = "2026-08-26";
+
+  function federalOf(facts: EntityFacts) {
+    const result = evaluate(facts, RULES, { asOf, horizonMonths: 12 });
+    return {
+      obligations: result.obligations.filter((o) => o.jurisdiction === "US"),
+      indeterminate: result.indeterminate.filter((r) => r.jurisdiction === "US"),
+    };
+  }
+
+  it("owes the 990-PF, not the e-Postcard", () => {
+    const { obligations } = federalOf(fixtures.PRIVATE_FOUNDATION);
+    expect(obligations.map((o) => o.ruleId)).toEqual(["us-federal-form-990-pf"]);
+    expect(obligations[0]?.form).toBe("990-PF");
+  });
+
+  it("owes it on the same date the wrong return used to claim", () => {
+    // 31 Dec year end + 5 months = 15 May 2027, a SATURDAY, rolled forward to
+    // Monday the 17th — the identical date the 990-N answer carried. Pinned
+    // because it isolates what changed: the FORM was wrong, the arithmetic was
+    // not, and a fix that also moved the date would be a second defect hiding
+    // inside the first.
+    const { obligations } = federalOf(fixtures.PRIVATE_FOUNDATION);
+    expect(obligations[0]?.dueOn).toBe("2027-05-17");
+  });
+
+  it("is not merely dropped from the 990 family", () => {
+    // The failure mode a narrower fix would have produced: exclude foundations
+    // from 990-N and ship no 990-PF, and the foundation gets a clean calendar
+    // with its only federal return missing. Zero obligations would satisfy
+    // "does not owe the 990-N" and be worse than the bug.
+    const { obligations } = federalOf(fixtures.PRIVATE_FOUNDATION);
+    expect(obligations.length).toBe(1);
+  });
+
+  it("does not run a 501(c)(3) that is a public charity through the 990-PF", () => {
+    // The other direction. A rule that fired for everyone would pass every
+    // assertion above while telling ordinary charities to file a foundation
+    // return — over-filing, cheaper than the bug but still wrong.
+    const { obligations } = federalOf(fixtures.WA_SMALL_CHARITY);
+    expect(obligations.map((o) => o.ruleId)).toEqual(["us-federal-form-990-n"]);
+  });
+});
+
+/**
+ * An unanswered foundation question is reported, not guessed — NEH-1146.
+ *
+ * The fact has **no default**, deliberately. `false` is the tempting one and it
+ * is the under-filing direction: it silently re-decides the 990 family for
+ * every entity created before the question existed, which is every entity in
+ * every install today.
+ */
+describe("a 501(c)(3) nobody has asked about private-foundation status", () => {
+  const result = evaluate(fixtures.FOUNDATION_QUESTION_UNANSWERED, RULES, {
+    asOf: "2026-08-26",
+    horizonMonths: 12,
+  });
+
+  it("is given no federal deadline at all", () => {
+    expect(result.obligations.filter((o) => o.jurisdiction === "US")).toEqual([]);
+  });
+
+  it("reports the 990 family as INDETERMINATE rather than dropping it", () => {
+    // Silently skipping an undecidable rule and deciding it wrongly are both
+    // wrong, and they look identical to a reader of the calendar. The rule has
+    // to come back with the question attached.
+    const undecided = result.indeterminate.map((r) => r.ruleId);
+    expect(undecided).toContain("us-federal-form-990-n");
+    expect(undecided).toContain("us-federal-form-990-pf");
+  });
+
+  it("names the fact that would decide it", () => {
+    // What the consumer turns into a question. A row saying "cannot tell" with
+    // nothing to answer is the state this reporting exists to avoid.
+    for (const rule of result.indeterminate.filter((r) => r.jurisdiction === "US")) {
+      expect(rule.missingFacts).toContain("isPrivateFoundation");
+    }
+  });
+
+  it("still carries the provenance a reader can check", () => {
+    // An indeterminate row is where the citation matters most: the reader is
+    // being asked to supply a fact, and the statute is what tells them whether
+    // answering is worth the trouble.
+    const pf = result.indeterminate.find((r) => r.ruleId === "us-federal-form-990-pf");
+    expect(pf?.citation).toContain("6033");
+    expect(pf?.agencyUrl).toContain("irs.gov");
+  });
+
+  it("answers the question the moment it is told", () => {
+    // The pair to the assertion above, and the one that stops "indeterminate"
+    // becoming a place rules go to die: supplying the single missing fact must
+    // produce a real date.
+    const answered = evaluate(
+      { ...fixtures.FOUNDATION_QUESTION_UNANSWERED, isPrivateFoundation: true },
+      RULES,
+      { asOf: "2026-08-26", horizonMonths: 12 },
+    );
+    expect(
+      answered.obligations.filter((o) => o.jurisdiction === "US").map((o) => o.ruleId),
+    ).toEqual(["us-federal-form-990-pf"]);
   });
 });
 

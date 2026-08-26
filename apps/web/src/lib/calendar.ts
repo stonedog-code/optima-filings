@@ -80,12 +80,19 @@ export interface MergedCalendar {
    * complete when it is not. This was lost when the dashboard moved to
    * reminder windows and had to be put back.
    */
-  indeterminate: (IndeterminateRule & { entityName: string })[];
+  indeterminate: (IndeterminateRule & { entityName: string; entityId: string })[];
 }
 
 export function mergedCalendar(asOf: string = today()): MergedCalendar {
+  // The id travels with the name because the row is only useful if it can point
+  // at the screen that resolves it. Naming the entity tells a reader which one
+  // is short a detail; the link is what lets them fix it.
   const indeterminate = allCalendars(asOf, 36).flatMap(({ entity, result }) =>
-    result.indeterminate.map((rule) => ({ ...rule, entityName: entity.name })),
+    result.indeterminate.map((rule) => ({
+      ...rule,
+      entityName: entity.name,
+      entityId: entity.id,
+    })),
   );
   return { bucketed: bucket(allDatedItems(asOf), asOf), indeterminate };
 }

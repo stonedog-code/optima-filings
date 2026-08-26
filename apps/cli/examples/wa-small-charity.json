@@ -7,5 +7,6 @@
   "fiscalYearEnd": "12-31",
   "grossRevenueMinorUnits": 4200000,
   "totalAssetsMinorUnits": 1100000,
-  "solicitsCharitableContributions": true
+  "solicitsCharitableContributions": true,
+  "isPrivateFoundation": false
 }

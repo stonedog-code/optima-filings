@@ -30,6 +30,7 @@ interface EntityRow {
   total_assets_minor_units: number | null;
   employee_count: number | null;
   solicits_charitable_contributions: number | null;
+  is_private_foundation: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -73,6 +74,14 @@ function toFacts(row: EntityRow): StoredEntity {
           solicitsCharitableContributions:
             row.solicits_charitable_contributions === 1,
         }),
+    // Three states, and all three survive the round trip: 1 and 0 become
+    // `true` and `false`, and NULL becomes an ABSENT KEY. The engine tests
+    // `=== undefined` to decide a fact is unknown, so an absent key is what
+    // makes an unanswered foundation question report the 990 family as
+    // indeterminate instead of deciding it.
+    ...(row.is_private_foundation === null
+      ? {}
+      : { isPrivateFoundation: row.is_private_foundation === 1 }),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -169,8 +178,9 @@ export class EntityStore {
            id, name, entity_types, formed_on, home_jurisdiction, jurisdictions,
            fiscal_year_end, registered_on, gross_revenue_minor_units,
            total_assets_minor_units, employee_count,
-           solicits_charitable_contributions, created_at, updated_at
-         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+           solicits_charitable_contributions, is_private_foundation,
+           created_at, updated_at
+         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       )
       .run(
         id,
@@ -187,6 +197,11 @@ export class EntityStore {
         facts.solicitsCharitableContributions === undefined
           ? null
           : facts.solicitsCharitableContributions
+            ? 1
+            : 0,
+        facts.isPrivateFoundation === undefined
+          ? null
+          : facts.isPrivateFoundation
             ? 1
             : 0,
         timestamp,
@@ -223,6 +238,7 @@ export class EntityStore {
            jurisdictions = ?, fiscal_year_end = ?, registered_on = ?,
            gross_revenue_minor_units = ?, total_assets_minor_units = ?,
            employee_count = ?, solicits_charitable_contributions = ?,
+           is_private_foundation = ?,
            updated_at = ?
          WHERE id = ?`,
       )
@@ -240,6 +256,11 @@ export class EntityStore {
         facts.solicitsCharitableContributions === undefined
           ? null
           : facts.solicitsCharitableContributions
+            ? 1
+            : 0,
+        facts.isPrivateFoundation === undefined
+          ? null
+          : facts.isPrivateFoundation
             ? 1
             : 0,
         this.now(),

@@ -16,6 +16,7 @@ import { mergedCalendar } from "@/lib/calendar";
 import { WindowList } from "@/components/window-list";
 import { Disclaimer } from "@/components/disclaimer";
 import { DraftBanner } from "@/components/draft-banner";
+import { describeMissingFacts } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -134,14 +135,30 @@ export default function HomePage() {
         >
           <h2 className={css({ fontSize: "lg", marginTop: "0" })}>Cannot tell yet</h2>
           <p className={css({ fontSize: "sm", marginTop: "1" })}>
-            These rules depend on facts an entity has not recorded. They have no
-            date, so they cannot appear above — but they are not ruled out either.
+            These rules depend on something an entity has not told us. They have
+            no date, so they cannot appear above — but they are not ruled out
+            either.
           </p>
+          {/*
+            The payoff of keeping a missing fact missing rather than defaulting
+            it. Decide it and a private foundation is quietly told to file the
+            990-N e-Postcard, which it may never file — wrong in the customer's
+            favour, the worst direction for a compliance product.
+
+            Phrased as the question it is, and pointing at the one screen that
+            answers it. A row that says "cannot tell" with nothing to do about
+            it is the state this section exists to avoid, not to describe.
+          */}
           <ul className={css({ fontSize: "sm" })}>
             {indeterminate.map((rule) => (
               <li key={`${rule.entityName}-${rule.ruleId}`}>
-                <strong>{rule.title}</strong> ({rule.jurisdiction}) for{" "}
-                {rule.entityName} — needs {rule.missingFacts.join(", ")}
+                <strong>{rule.title}</strong> ({rule.jurisdiction}) — we need to
+                know {describeMissingFacts(rule.missingFacts)} for{" "}
+                {rule.entityName}.{" "}
+                <Link href={`/entities/${rule.entityId}/edit`}>
+                  Add that detail
+                </Link>{" "}
+                and we will work it out.
               </li>
             ))}
           </ul>

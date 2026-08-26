@@ -96,14 +96,19 @@ const openStore = () =>
   });
 
 describe("migration 4, on a database that already has documents", () => {
-  it("is the next migration, and does not edit an earlier one", () => {
+  it("is in the list, in order, and does not edit an earlier one", () => {
     // The append-only rule from schema.ts, asserted rather than trusted. An
     // edit to a shipped migration changes what NEW installs get without
     // changing existing ones, and the two then diverge in silence.
     const ids = MIGRATIONS.map((m) => m.id);
     expect(ids).toEqual([...ids].sort((a, b) => a - b));
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids[ids.length - 1]).toBe(NEW_MIGRATION_ID);
+    // Present, NOT last. This asserted "is the final migration" until
+    // migration 5 arrived, which is a test that goes red for every future
+    // migration and whose easiest green is to renumber or fold the new one
+    // into an earlier entry — the exact append-only violation the assertion
+    // above exists to catch. Each migration's own file guards its own id.
+    expect(ids).toContain(NEW_MIGRATION_ID);
   });
 
   it("applies cleanly and records itself", () => {

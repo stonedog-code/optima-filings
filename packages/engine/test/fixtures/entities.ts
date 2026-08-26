@@ -21,6 +21,13 @@ export const WA_SMALL_CHARITY: EntityFacts = {
   grossRevenueMinorUnits: 4_200_000, // $42,000 — under the 990-N ceiling
   totalAssetsMinorUnits: 1_100_000,
   solicitsCharitableContributions: true,
+  // A PUBLIC charity, said out loud. Before this fact existed the 990 family
+  // decided itself from receipts and assets alone, which is how a private
+  // foundation with modest receipts was told to file the 990-N e-Postcard —
+  // a return the IRS does not permit it to file at any level (NEH-1146).
+  // `undefined` is a real third state here, so leaving it off would make this
+  // fixture undecidable rather than making it a public charity.
+  isPrivateFoundation: false,
 };
 
 export const WA_LARGE_CHARITY: EntityFacts = {
@@ -33,6 +40,7 @@ export const WA_LARGE_CHARITY: EntityFacts = {
   grossRevenueMinorUnits: 310_000_000, // $3.1M
   totalAssetsMinorUnits: 890_000_000,
   solicitsCharitableContributions: true,
+  isPrivateFoundation: false,
 };
 
 export const OR_LLC: EntityFacts = {
@@ -127,6 +135,7 @@ export const ENDOWED_CHARITY: EntityFacts = {
   grossRevenueMinorUnits: 8_000_000, // $80,000 — under the $200k receipts test
   totalAssetsMinorUnits: 1_200_000_000, // $12M — far over the $500k assets test
   solicitsCharitableContributions: false,
+  isPrivateFoundation: false,
 };
 
 /**
@@ -147,6 +156,7 @@ export const ENDOWED_NON_SOLICITING_CHARITY: EntityFacts = {
   totalAssetsMinorUnits: 900_000_000,
   charitableAssetsMinorUnits: 800_000_000, // $8M, far over the $250k line
   solicitsCharitableContributions: false,
+  isPrivateFoundation: false,
 };
 
 /**
@@ -176,9 +186,17 @@ export const JUNE_YEAR_END_SOLICITING_CHARITY: EntityFacts = {
   grossRevenueMinorUnits: 1_200_000,
   totalAssetsMinorUnits: 4_000_000,
   solicitsCharitableContributions: true,
+  isPrivateFoundation: false,
 };
 
-/** A charity that has not told us its revenue. Drives the indeterminate path. */
+/**
+ * A charity that has not told us its revenue. Drives the indeterminate path.
+ *
+ * It HAS answered the foundation question, deliberately: exactly one unknown,
+ * so an assertion about the revenue path cannot be satisfied by a different
+ * missing fact. [[FOUNDATION_QUESTION_UNANSWERED]] is the fixture for the
+ * other one.
+ */
 export const CHARITY_WITHOUT_REVENUE: EntityFacts = {
   name: "Example Olympic Literacy Project",
   entityTypes: ["501c3", "nonprofit-corp"],
@@ -187,4 +205,56 @@ export const CHARITY_WITHOUT_REVENUE: EntityFacts = {
   jurisdictions: ["US", "US-WA"],
   fiscalYearEnd: "12-31",
   solicitsCharitableContributions: true,
+  isPrivateFoundation: false,
+};
+
+/**
+ * A private foundation, and the entity NEH-1146 was reported for.
+ *
+ * Its receipts and assets are both small — the shape that used to match
+ * `us-federal-form-990-n` and produce a date for the e-Postcard. **A private
+ * foundation may never file Form 990-N, at any receipts level**; it files Form
+ * 990-PF, and the IRS lists it among the organisations not permitted to use the
+ * e-Postcard. So the numbers here are not incidental: an assertion built on a
+ * foundation with large receipts would pass under the old rules too, because
+ * 990-N would already have been ruled out on the amount. Only a SMALL
+ * foundation distinguishes the fix from the bug.
+ *
+ * `entityTypes` is `["501c3"]` alone rather than also `nonprofit-corp`, which
+ * keeps this fixture off the state annual report and makes the federal
+ * assertions read without a second obligation in the way.
+ */
+export const PRIVATE_FOUNDATION: EntityFacts = {
+  name: "Example Harbor Light Family Foundation",
+  entityTypes: ["501c3"],
+  formedOn: "2015-04-02",
+  homeJurisdiction: "US-WA",
+  jurisdictions: ["US", "US-WA"],
+  fiscalYearEnd: "12-31",
+  grossRevenueMinorUnits: 2_000_000, // $20,000 — well under the 990-N ceiling
+  totalAssetsMinorUnits: 3_000_000, // $30,000 — well under every other line
+  solicitsCharitableContributions: false,
+  isPrivateFoundation: true,
+};
+
+/**
+ * Identical to [[PRIVATE_FOUNDATION]] except that nobody has asked.
+ *
+ * Every entity that existed before the question did looks like this, so it is
+ * the common case rather than an edge one. The engine must report the whole 990
+ * family as **indeterminate** for it — naming the question — rather than
+ * deciding it. Reading the absence as "not a foundation" is the exact
+ * under-filing the fact was added to remove, and it is the answer a default
+ * would silently restore.
+ */
+export const FOUNDATION_QUESTION_UNANSWERED: EntityFacts = {
+  name: "Example Harbor Light Trust",
+  entityTypes: ["501c3"],
+  formedOn: "2015-04-02",
+  homeJurisdiction: "US-WA",
+  jurisdictions: ["US", "US-WA"],
+  fiscalYearEnd: "12-31",
+  grossRevenueMinorUnits: 2_000_000,
+  totalAssetsMinorUnits: 3_000_000,
+  solicitsCharitableContributions: false,
 };
