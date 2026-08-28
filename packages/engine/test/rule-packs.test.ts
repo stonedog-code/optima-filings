@@ -108,13 +108,36 @@ describe("every seeded rule is honest about its provenance", () => {
     expect(rule.citation).not.toMatch(/^https?:\/\//);
   });
 
-  it("marks unverified rules as draft rather than asserting them", () => {
-    // The seed set was written from general knowledge, not from reading each
-    // statute. Shipping it as `active` would be the exact false-confidence
-    // failure the whole design is built to avoid.
+  it("makes every rule show how far its verification actually got", () => {
+    // REWRITTEN 2026-08-28. The previous form partitioned the pack into
+    // drafts and actives and then asserted `drafts + active === RULES` — true
+    // by the schema for any pack whatsoever — before looping over the drafts.
+    // Since pack `2026.8.6` there are none, so the loop ran zero times and the
+    // whole test passed over an empty set while reading as a guard on
+    // verification honesty.
+    //
+    // Promotion to `active` is a claim that a person read the primary source.
+    // That claim is only checkable if the rule carries the date and what was
+    // found, so those are what this asserts — on the actives, which is where
+    // the pack now lives.
     const active = RULES.filter((r) => r.status === "active");
     const drafts = RULES.filter((r) => r.status === "draft");
-    expect(drafts.length + active.length).toBe(RULES.length);
+    expect(active.length + drafts.length).toBe(RULES.length);
+
+    // Non-vacuity: the loop below must actually run. Without this the test
+    // returns to passing over an empty set the moment the pack changes shape.
+    expect(active.length).toBeGreaterThan(0);
+
+    const today = new Date().toISOString().slice(0, 10);
+    for (const rule of active) {
+      expect(rule.lastVerified).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      // A date in the future is a typo or a fabrication, and either way it
+      // makes the staleness report lie in the reassuring direction.
+      expect(rule.lastVerified <= today).toBe(true);
+      expect(rule.notes ?? "").not.toBe("");
+    }
+
+    // A draft asserts nothing, but it must still say why it is a draft.
     for (const rule of drafts) {
       expect(rule.notes ?? "").not.toBe("");
     }

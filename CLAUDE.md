@@ -154,17 +154,17 @@ a directory per entity type would have to pick one or duplicate the rule.
 ```json
 {
   "$schema": "../../schema/rule.v1.json",
-  "id": "us-wa-sos-nonprofit-annual-report",
+  "id": "us-wa-sos-corporation-annual-report",
   "jurisdiction": "US-WA",
-  "title": "Nonprofit Corporation Annual Report",
+  "title": "Profit Corporation Annual Report",
   "agency": "Washington Secretary of State",
-  "entityTypes": ["501c3", "nonprofit-corp"],
+  "entityTypes": ["s-corp", "c-corp", "b-corp"],
   "cadence": { "type": "annual", "anchor": "formation-month", "dayOfMonth": "last" },
-  "fee": { "amountMinorUnits": 6000, "currency": "USD" },
-  "citation": "RCW 24.03A.070; RCW 23.95.255(2)",
-  "lastVerified": "2026-08-01",
-  "status": "draft",
-  "effectiveFrom": "2022-01-01"
+  "fee": { "amountMinorUnits": 7000, "currency": "USD" },
+  "citation": "RCW 23.95.255(2); WAC 434-112-060(1); WAC 434-112-085(7)(p)",
+  "lastVerified": "2026-08-08",
+  "status": "active",
+  "effectiveFrom": "2020-01-01"
 }
 ```
 
@@ -213,9 +213,11 @@ read the primary source.
 who did not think about it; a caller that wants them passes `includeDraft` and
 gets `status` on every obligation so it can label them.
 
-**The entire seed set is currently `draft`** — see the seeding note in the README
-and NEH-194. Nothing in it should be shown to a user as fact until a human has
-worked through it.
+**The entire shipped set is `active`** as of 2026-08-06 (#54), each rule read
+against its primary source and dated, with the passes written up in
+`docs/rule-verification/`. `draft` is therefore the state of an *incoming*
+rule, not of the pack — anything asserting the seed set is unverified is stale,
+and that claim was wrong in five files until 2026-08-28.
 
 **Money is integer minor units.** `6000` is $60.00. Never a float, anywhere in
 this repo — a rounding error in a fee is a support ticket and a credibility hit.
@@ -299,10 +301,12 @@ Four things about it that are decisions rather than accidents:
 - **It gates the merge.** A separate `e2e` job in `gate.yml`, blocking. This repo
   is public so branch protection works; the hosted repo's cannot block at all
   (NEH-351), which is why only this one is wired in.
-- **Drafts are switched ON** (`OPTIMA_INCLUDE_DRAFT=true`). The whole seed set is
-  `draft` and `evaluate()` excludes drafts by default, so a stock launch shows an
-  empty calendar — correct, and untestable. Opting in also makes the draft banner
-  and the per-row "unverified" badge assertable.
+- **Drafts are switched ON** (`OPTIMA_INCLUDE_DRAFT=true`), so the draft banner
+  is assertable. **Note what that no longer proves.** The flag once mattered for
+  the rows too, because the whole seed set was `draft`; since 2026-08-06 nothing
+  shipped is, so the banner renders on the flag alone and no row is badged
+  *unverified*. The per-row badge has no non-vacuous coverage today — it needs a
+  draft fixture rule (NEH-1255).
 - **A throwaway SQLite file per run**, never the default `/data/optima.sqlite`,
   which is where a self-hoster's volume is mounted.
 

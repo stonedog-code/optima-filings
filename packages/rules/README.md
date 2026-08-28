@@ -20,18 +20,23 @@ evaluate(entity, ALL_RULES, { asOf: "2026-08-05" });
 
 ## ⚠️ Read this before showing a date to anyone
 
-**The current rule set is entirely `status: "draft"`.** Every rule was written
-from general knowledge and **not one has been checked against its primary source
-by a human.**
+**Every rule currently shipped is `status: "active"`** — a person read the
+primary source, and the date they read it is on the rule. The working is in
+[`docs/rule-verification/`](https://github.com/stonedog-code/optima-filings/tree/main/docs/rule-verification)
+in the repository, so you can check the reading rather than take it on trust.
 
-`evaluate()` excludes drafts by default, so a stock integration shows an *empty*
-calendar. That is the honest answer, not a bug. Opting in with
-`includeDraft: true` is a deliberate act, and every obligation carries `status`
-so you can label it.
+What is thin is **coverage**: Washington, Oregon, Delaware and the federal 990
+family, and nothing else. An entity outside those gets an empty calendar, which
+means *"nothing is known here"* and never *"nothing is due"*.
+
+A contributed rule may arrive as `draft` — written from general knowledge,
+statute unread. `evaluate()` excludes drafts by default, so they cannot reach a
+consumer who did not ask; `includeDraft: true` is a deliberate act, and every
+obligation carries `status` so you can label what you show.
 
 This is a compliance product. The first wrong deadline that costs somebody a
-penalty is the credibility event the project does not recover from — so the
-seed set says what it is rather than looking finished.
+penalty is the credibility event the project does not recover from — so a rule
+says what it is rather than looking finished.
 
 ## The bet
 
@@ -49,17 +54,18 @@ here, at the same accuracy, on the same day.
 
 ```json
 {
-  "id": "us-wa-sos-nonprofit-annual-report",
+  "id": "us-wa-sos-corporation-annual-report",
   "jurisdiction": "US-WA",
-  "title": "Nonprofit Corporation Annual Report",
+  "title": "Profit Corporation Annual Report",
   "agency": "Washington Secretary of State",
-  "entityTypes": ["501c3", "nonprofit-corp"],
+  "entityTypes": ["s-corp", "c-corp", "b-corp"],
   "cadence": { "type": "annual", "anchor": "formation-month", "dayOfMonth": "last" },
-  "fee": { "amountMinorUnits": 6000, "currency": "USD" },
-  "citation": "RCW 24.03A.1010",
-  "lastVerified": "2026-08-01",
-  "status": "draft",
-  "effectiveFrom": "2022-01-01"
+  "fee": { "amountMinorUnits": 7000, "currency": "USD" },
+  "citation": "RCW 23.95.255(2); WAC 434-112-060(1); WAC 434-112-085(7)(p)",
+  "citationUrl": "https://app.leg.wa.gov/rcw/default.aspx?cite=23.95",
+  "lastVerified": "2026-08-08",
+  "status": "active",
+  "effectiveFrom": "2020-01-01"
 }
 ```
 
