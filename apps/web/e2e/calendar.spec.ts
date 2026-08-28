@@ -180,12 +180,20 @@ test.describe("the self-host journey", () => {
     ).toBeVisible();
   });
 
-  test("draft rules are marked as unverified", async ({ page }) => {
-    // The whole seed set is `draft` — written but never checked against a
-    // primary source. The suite runs with drafts switched on, so every row
-    // shown here is unverified, and the product must say so. Presenting
-    // unverified regulatory data as fact is the credibility failure this
-    // project cannot recover from.
+  test("the unverified banner shows when drafts are switched on", async ({
+    page,
+  }) => {
+    // RENAMED 2026-08-28, because the old name ("draft rules are marked as
+    // unverified") claimed coverage this no longer has. `<DraftBanner />`
+    // renders on the FLAG alone (app/page.tsx), and its copy contains the
+    // word, so `.first()` matches the banner. That was indistinguishable from
+    // per-row badging while the whole seed set was `draft`; since pack
+    // 2026.8.6 nothing shipped is, so no row is badged and the row assertion
+    // this test appeared to make now passes over an empty set.
+    //
+    // The banner is worth asserting on its own terms and this does that. The
+    // per-row badge needs a draft fixture rule and is NEH-1255 — do not read
+    // this green as covering it.
     await page.goto("/");
     await expect(page.getByText(/unverified/i).first()).toBeVisible();
   });

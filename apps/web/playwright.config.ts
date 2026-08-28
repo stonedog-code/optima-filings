@@ -30,12 +30,15 @@
  *
  * ## Drafts are switched ON, on purpose
  *
- * The entire seed rule set is `status: "draft"` and `evaluate()` excludes
- * drafts by default, so a stock launch shows an empty calendar. That is the
- * honest default and NOT something to change — but it means the suite must opt
- * in, or "obligations render" is untestable. Opting in also makes the draft
- * banner and the per-row "unverified" badge assertable, and those honesty
- * features had never been seen in a browser either.
+ * `evaluate()` excludes drafts by default, which is the honest default and NOT
+ * something to change. The suite opts in so the draft banner is assertable.
+ *
+ * **It no longer buys what it once did.** This was written when the whole seed
+ * set was `status: "draft"`: opting in was then the only way to render any row
+ * at all, and every row rendered carried the per-row "unverified" badge. Since
+ * pack `2026.8.6` the shipped set is entirely `active`, so obligations render
+ * with or without the flag and no row is badged. What the flag still proves is
+ * the banner; the per-row badge has no coverage today (NEH-1255).
  */
 
 import { mkdtempSync } from "node:fs";

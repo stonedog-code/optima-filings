@@ -67,10 +67,13 @@ export function today(): string {
 /**
  * Whether to show rules a human has not verified against their statute.
  *
- * **Defaults to off**, matching the engine. The entire seed set is currently
- * `draft`, so a self-hoster who has not opted in sees an empty calendar — which
- * is the honest answer, not a bug. Turning it on is a deliberate act, and every
- * such row is marked in the UI.
+ * **Defaults to off**, matching the engine. Turning it on is a deliberate act,
+ * and every draft row is marked in the UI.
+ *
+ * It mattered more than it does. When the whole seed set was `draft`, off meant
+ * an empty calendar for anyone who had not opted in — the honest answer, not a
+ * bug. Since pack `2026.8.6` the shipped set is entirely `active`, so this flag
+ * only affects rules the operator added themselves.
  */
 export function includeDraft(): boolean {
   return renamedEnv("INCLUDE_DRAFT") === "true";

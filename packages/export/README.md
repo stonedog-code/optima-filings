@@ -30,10 +30,11 @@ const csv = toCsv(obligations);
 
 ## ⚠️ Read this before showing a date to anyone
 
-The rules this renders currently ship as `status: "draft"` — written from
-general knowledge, not checked against a statute by a person. This package
-carries that caveat **into the calendar event itself**, because somebody reading
-a reminder six months from now on their phone has no other way to know.
+The rules shipped in `@optima-compliance/rules` are all `status: "active"` — a
+person read the primary source and dated it. A rule from anywhere else may be
+`draft`, and this package carries that caveat **into the calendar event
+itself** (`[unverified]` in the summary), because somebody reading a reminder
+six months from now on their phone has no other way to know.
 
 **Nothing here is legal or tax advice.** Every obligation cites its statute;
 confirm the deadline and the fee with the agency before you file.

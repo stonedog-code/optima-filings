@@ -25,14 +25,15 @@
  *   `*.sqlite` and the derived `data/documents/` are all already gitignored —
  *   a self-hoster's database must never be committable to a public repo.
  *
- * - `OPTIMA_INCLUDE_DRAFT` → `true`. The whole seed rule set is
- *   `status: "draft"` and `evaluate()` excludes drafts by default, so a stock
- *   launch renders an empty calendar. That is the correct default for a real
- *   install and a terrible one for someone checking whether their change
- *   worked: an empty screen reads as "the app is broken". The E2E harness opts
- *   in for the same reason (`apps/web/playwright.config.ts`), and every such
- *   row is badged *unverified* in the UI, so nothing here presents draft data
- *   as fact.
+ * - `OPTIMA_INCLUDE_DRAFT` → `true`. `evaluate()` excludes drafts by default,
+ *   which is right for a real install and wrong for someone checking whether
+ *   the rule they are writing worked: an empty screen reads as "the app is
+ *   broken". Every draft row is badged *unverified* in the UI, so nothing here
+ *   presents draft data as fact. Note what this no longer does: it was written
+ *   when the whole seed set was `draft`, and since pack `2026.8.6` nothing
+ *   shipped is — so it changes nothing until you add a draft of your own. The
+ *   E2E harness opts in for its own reason
+ *   (`apps/web/playwright.config.ts`).
  *
  * **Neither default overrides an explicit one.** An operator who exports either
  * variable gets what they asked for, and the startup banner prints the values

@@ -24,13 +24,15 @@ every rule is the same on both sides.**
 > names the statute it came from, so you can. You remain responsible for your own
 > filings.
 
-> ### 🚧 The rule data is not ready to rely on yet
+> ### 📍 Coverage is narrow — check that yours is here
 >
-> Every rule currently shipped is `status: "draft"` — written from general
-> knowledge and **not yet checked against its statute by a human**. The engine
-> excludes drafts by default for exactly this reason. Do not use this to run a
-> real compliance calendar until the seed set has been verified
-> (tracked as NEH-194).
+> Every rule shipped here is `status: "active"`: read against its primary source
+> by a person, dated, with the working recorded under
+> [`docs/rule-verification/`](docs/rule-verification/). What is thin is
+> **coverage** — Washington, Oregon, Delaware and the federal 990 family, and
+> nothing else. If your jurisdiction is not on that list you get an empty
+> calendar rather than a wrong one, and a rule for it is the most useful pull
+> request you can send.
 
 ---
 
@@ -62,9 +64,10 @@ npm run dev           # the dashboard, on http://localhost:3000
 ```
 
 That is the whole setup. `npm run dev` puts the SQLite database in `data/`
-inside the checkout (gitignored) and switches unverified rules on, because the
-seed set is entirely `draft` and a calendar with nothing in it looks like a
-broken app rather than an honest empty one. Both are defaults, not
+inside the checkout (gitignored) and switches unverified rules on, so a rule you
+are still writing shows up while you work on it rather than reading as a broken
+app. The shipped set is entirely `active`, so that second default changes
+nothing until you add a draft of your own. Both are defaults, not
 overrides — export `OPTIMA_DB_PATH` or `OPTIMA_INCLUDE_DRAFT` and you get what
 you asked for. To run the real self-host artefact instead, see
 [`docker/README.md`](docker/README.md).
@@ -80,17 +83,18 @@ npm run rules:staleness   # which rules nobody has re-verified lately
 ```json
 {
   "$schema": "../../schema/rule.v1.json",
-  "id": "us-wa-sos-nonprofit-annual-report",
+  "id": "us-wa-sos-corporation-annual-report",
   "jurisdiction": "US-WA",
-  "title": "Nonprofit Corporation Annual Report",
+  "title": "Profit Corporation Annual Report",
   "agency": "Washington Secretary of State",
-  "entityTypes": ["501c3", "nonprofit-corp"],
+  "entityTypes": ["s-corp", "c-corp", "b-corp"],
   "cadence": { "type": "annual", "anchor": "formation-month", "dayOfMonth": "last" },
-  "fee": { "amountMinorUnits": 6000, "currency": "USD" },
-  "citation": "RCW 24.03A.1010",
-  "lastVerified": "2026-08-01",
-  "status": "draft",
-  "effectiveFrom": "2022-01-01"
+  "fee": { "amountMinorUnits": 7000, "currency": "USD" },
+  "citation": "RCW 23.95.255(2); WAC 434-112-060(1); WAC 434-112-085(7)(p)",
+  "citationUrl": "https://app.leg.wa.gov/rcw/default.aspx?cite=23.95",
+  "lastVerified": "2026-08-08",
+  "status": "active",
+  "effectiveFrom": "2020-01-01"
 }
 ```
 
@@ -101,7 +105,7 @@ Three things about that are deliberate and worth knowing before you write one:
   fail loudly — it rots quietly, staying valid-looking while the fee changes.
   Bumping the date without re-reading the statute is worse than leaving it
   stale: it turns an honest "unknown" into a false "checked".
-- **Fees are integer minor units.** `6000` is $60.00. Never a float.
+- **Fees are integer minor units.** `7000` is $70.00. Never a float.
 
 When a fee or deadline changes, **do not edit the rule** — set `effectiveTo` on
 the old one and add a new one. That is what keeps "what was due in 2024"

@@ -6,12 +6,21 @@ import { StyledUnverified } from "@optima-compliance/ui";
 import { css } from "styled-system/css";
 
 /**
- * Shown whenever unverified rules are switched on.
+ * Shown whenever unverified rules are switched ON — on the flag alone, not on
+ * any row actually being draft.
  *
- * The whole seeded rule set is currently `draft` — written from general
- * knowledge, never checked against a statute by a person. Someone who has
- * opted in needs that stated plainly and repeatedly, because the rows
- * themselves look exactly as authoritative as verified ones.
+ * That was the same thing when this was written: the whole seeded set was
+ * `draft`, so opting in always did show unverified rows, and someone who had
+ * opted in needed it stated plainly and repeatedly, because the rows look
+ * exactly as authoritative as verified ones.
+ *
+ * Since pack `2026.8.6` the shipped set is entirely `active`, so the two have
+ * come apart, and `npm run dev` sets the flag — which means a contributor with
+ * no draft rules of their own is told unverified rules are being shown when
+ * none are. Crying wolf on an honesty surface is how the honesty surface stops
+ * being read. The fix is to condition this on the evaluation actually
+ * containing a draft obligation, which also gives the per-row badge something
+ * to assert: NEH-1255.
  */
 export function DraftBanner() {
   return (
