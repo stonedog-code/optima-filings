@@ -31,14 +31,19 @@
  * ## Drafts are switched ON, on purpose
  *
  * `evaluate()` excludes drafts by default, which is the honest default and NOT
- * something to change. The suite opts in so the draft banner is assertable.
+ * something to change. The suite opts in so a draft rule a contributor adds is
+ * rendered rather than silently dropped.
  *
  * **It no longer buys what it once did.** This was written when the whole seed
  * set was `status: "draft"`: opting in was then the only way to render any row
  * at all, and every row rendered carried the per-row "unverified" badge. Since
  * pack `2026.8.6` the shipped set is entirely `active`, so obligations render
- * with or without the flag and no row is badged. What the flag still proves is
- * the banner; the per-row badge has no coverage today (NEH-1255).
+ * with or without the flag and no shipped row is badged.
+ *
+ * What the suite asserts here is therefore an ABSENCE — the banner must NOT
+ * appear, because the flag being on is not a draft being present (NEH-1255).
+ * The positive case is unreachable from a browser and lives in
+ * `apps/web/test/draftBanner.test.ts`.
  */
 
 import { mkdtempSync } from "node:fs";

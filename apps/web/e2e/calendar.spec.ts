@@ -180,22 +180,27 @@ test.describe("the self-host journey", () => {
     ).toBeVisible();
   });
 
-  test("the unverified banner shows when drafts are switched on", async ({
+  test("does NOT cry wolf: no unverified banner when every rule is verified", async ({
     page,
   }) => {
-    // RENAMED 2026-08-28, because the old name ("draft rules are marked as
-    // unverified") claimed coverage this no longer has. `<DraftBanner />`
-    // renders on the FLAG alone (app/page.tsx), and its copy contains the
-    // word, so `.first()` matches the banner. That was indistinguishable from
-    // per-row badging while the whole seed set was `draft`; since pack
-    // 2026.8.6 nothing shipped is, so no row is badged and the row assertion
-    // this test appeared to make now passes over an empty set.
+    // This is the NEH-1255 regression, and it asserts an ABSENCE on purpose.
     //
-    // The banner is worth asserting on its own terms and this does that. The
-    // per-row badge needs a draft fixture rule and is NEH-1255 — do not read
-    // this green as covering it.
+    // The banner used to render on `OPTIMA_INCLUDE_DRAFT` — the flag this
+    // suite sets, and the one `npm run dev` sets. While the whole seed pack
+    // was `draft` that was indistinguishable from "a draft is on screen".
+    // Since pack `2026.8.6` nothing shipped is, so the page said "Unverified
+    // rules are being shown" over rows that were every one of them verified.
+    //
+    // The rows assertion is what stops this passing over an empty page: an app
+    // that rendered nothing at all would also show no banner, and would be a
+    // worse bug than the one being fixed.
     await page.goto("/");
-    await expect(page.getByText(/unverified/i).first()).toBeVisible();
+    await expect(
+      page.getByText(/Nonprofit Corporation Annual Report/i).first(),
+    ).toBeVisible();
+    await expect(page.getByText(/Unverified rules are being shown/i)).toHaveCount(
+      0,
+    );
   });
 });
 
