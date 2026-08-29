@@ -24,7 +24,8 @@
  */
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname, relative, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
+import { readFileSync } from "node:fs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -142,7 +143,12 @@ const steps = [
       // Jest prints its own input-set size — "Test Suites: N total" — to
       // stderr, which streams through. Re-deriving it here would be a second
       // count that could only disagree with the first.
-      const r = spawnSync("npx", ["jest", "--ci"], {
+      // `--coverage`, so the threshold in `jest.config.mjs` is enforced by the
+      // gate rather than by whoever remembers to ask. Same run, so it costs one
+      // pass rather than two — and the denominator it prints (statements in the
+      // codebase, not statements a test happened to load) is the input-set size
+      // this step was previously reporting without.
+      const r = spawnSync("npx", ["jest", "--ci", "--coverage"], {
         cwd: ROOT,
         encoding: "utf8",
         maxBuffer: 64 * 1024 * 1024,
@@ -151,10 +157,23 @@ const steps = [
       process.stderr.write(r.stderr ?? "");
       const suites = /Test Suites:.*?(\d+) total/.exec(r.stderr ?? "")?.[1];
       const tests = /Tests:.*?(\d+) total/.exec(r.stderr ?? "")?.[1];
+      // Read from the summary file rather than scraped from the reporter: the
+      // number that matters is the DENOMINATOR — how many statements exist —
+      // and a percentage on its own cannot show that shrinking.
+      let cov = "";
+      try {
+        const total = JSON.parse(
+          readFileSync(join(ROOT, "coverage/coverage-summary.json"), "utf8"),
+        ).total.statements;
+        cov = `, ${total.pct}% of ${total.total} statements`;
+      } catch {
+        // Absent only if jest failed before writing it, which the status
+        // already reports. Silence here rather than a second failure mode.
+      }
       return {
         status: r.status ?? 1,
         examined: suites ? Number(suites) : null,
-        unit: tests ? `test suites (${tests} tests)` : "test suites",
+        unit: tests ? `test suites (${tests} tests${cov})` : "test suites",
       };
     },
   },
