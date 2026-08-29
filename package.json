@@ -20,6 +20,8 @@
     "type-check": "tsc --build --force",
     "lint": "eslint . --ext ts,tsx",
     "test": "jest",
+    "//test:coverage": "The same run the gate makes, for reading locally. The threshold lives in jest.config.mjs and applies to any --coverage run, so this cannot report a number the gate would not enforce.",
+    "test:coverage": "jest --coverage",
     "rules:barrel": "node packages/rules/scripts/build-barrel.mjs",
     "rules:barrel:check": "node packages/rules/scripts/build-barrel.mjs --check",
     "rules:validate": "node packages/rules/scripts/validate.mjs",
