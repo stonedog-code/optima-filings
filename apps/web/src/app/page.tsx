@@ -10,9 +10,10 @@ import {
   StyledDownload,
   StyledEntity,
   StyledForm,
+  StyledUnverified,
 } from "@optima-compliance/ui";
-import { getStore, includeDraft, today } from "@/lib/server";
-import { mergedCalendar } from "@/lib/calendar";
+import { getStore, today } from "@/lib/server";
+import { hasDraftItems, mergedCalendar } from "@/lib/calendar";
 import { WindowList } from "@/components/window-list";
 import { Disclaimer } from "@/components/disclaimer";
 import { DraftBanner } from "@/components/draft-banner";
@@ -122,7 +123,11 @@ export default function HomePage() {
         </nav>
       </header>
 
-      {includeDraft() && <DraftBanner />}
+      {/*
+        The DATA, not the flag. `includeDraft()` is what lets a draft through;
+        it is not evidence that one came through. See `hasDraftItems`.
+      */}
+      {hasDraftItems({ bucketed, indeterminate }) && <DraftBanner />}
 
       <WindowList bucketed={bucketed} asOf={asOf} />
 
@@ -152,8 +157,24 @@ export default function HomePage() {
           <ul className={css({ fontSize: "sm" })}>
             {indeterminate.map((rule) => (
               <li key={`${rule.entityName}-${rule.ruleId}`}>
-                <strong>{rule.title}</strong> ({rule.jurisdiction}) — we need to
-                know {describeMissingFacts(rule.missingFacts)} for{" "}
+                <strong>{rule.title}</strong> ({rule.jurisdiction})
+                {/*
+                  Same marker as a dated row, for the same reason. An
+                  indeterminate rule carries `status` exactly as an obligation
+                  does, and a draft one is no more verified for having no date
+                  — but this list rendered it with nothing to say so, which is
+                  the gap the banner above would otherwise be describing
+                  without pointing at anything.
+                */}
+                {rule.status === "draft" && (
+                  <span
+                    className={css({ fontSize: "sm", marginLeft: "2" })}
+                    style={{ color: "var(--optima-text-warning-text)" }}
+                  >
+                    <StyledUnverified title="Unverified" /> unverified
+                  </span>
+                )}{" "}
+                — we need to know {describeMissingFacts(rule.missingFacts)} for{" "}
                 {rule.entityName}.{" "}
                 <Link href={`/entities/${rule.entityId}/edit`}>
                   Add that detail

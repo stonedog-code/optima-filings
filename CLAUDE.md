@@ -301,12 +301,21 @@ Four things about it that are decisions rather than accidents:
 - **It gates the merge.** A separate `e2e` job in `gate.yml`, blocking. This repo
   is public so branch protection works; the hosted repo's cannot block at all
   (NEH-351), which is why only this one is wired in.
-- **Drafts are switched ON** (`OPTIMA_INCLUDE_DRAFT=true`), so the draft banner
-  is assertable. **Note what that no longer proves.** The flag once mattered for
-  the rows too, because the whole seed set was `draft`; since 2026-08-06 nothing
-  shipped is, so the banner renders on the flag alone and no row is badged
-  *unverified*. The per-row badge has no non-vacuous coverage today — it needs a
-  draft fixture rule (NEH-1255).
+- **Drafts are switched ON** (`OPTIMA_INCLUDE_DRAFT=true`), and since NEH-1255
+  the suite asserts the banner is **absent**. The flag lets a draft through; it
+  is not evidence that one came through, and conflating the two is what had the
+  app telling a `npm run dev` contributor that unverified rules were on screen
+  when every row was verified. `hasDraftItems` now decides, from the calendar
+  rather than the environment.
+- **The positive case cannot be reached from a browser, and that is why
+  `hasDraftItems` is exported.** No supported mechanism puts a `draft` rule into
+  a running install — no local-pack directory, no injection point — so a browser
+  only ever sees the negative. `apps/web/test/draftBanner.test.ts` covers the
+  true case against a hand-built calendar, one assertion per bucket, with a
+  non-vacuity check that the fixtures hold items. **The per-row badge itself is
+  still uncovered**: it needs a component tier this repo does not have
+  (`testEnvironment: "node"`, no testing-library) or a way to load a local pack
+  (NEH-1255).
 - **A throwaway SQLite file per run**, never the default `/data/optima.sqlite`,
   which is where a self-hoster's volume is mounted.
 

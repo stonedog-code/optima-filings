@@ -83,6 +83,47 @@ export interface MergedCalendar {
   indeterminate: (IndeterminateRule & { entityName: string; entityId: string })[];
 }
 
+/**
+ * Is anything on this calendar actually unverified?
+ *
+ * Exported and pure so the banner's condition can be asserted without
+ * rendering a page — this repo has no component tier, and the alternative was
+ * a condition tested only by a browser test that could not construct the case.
+ *
+ * ## Why this exists at all
+ *
+ * The banner used to render on `includeDraft()` — the FLAG, not the data. Those
+ * were the same statement while the whole seed pack was `draft`: opting in
+ * always did put unverified rows on screen. Since pack `2026.8.6` the shipped
+ * set is entirely `active`, and `npm run dev` sets the flag, so a contributor
+ * with no draft rules of their own was told "Unverified rules are being shown"
+ * with every row on the page verified. NEH-1255.
+ *
+ * Crying wolf on an honesty surface is how the honesty surface stops being
+ * read, and on a compliance product that surface is load-bearing.
+ *
+ * ## Both halves of the calendar, deliberately
+ *
+ * `indeterminate` rules carry `status` exactly as obligations do — they extend
+ * the same `RuleProvenance` — and a draft one is just as unverified for having
+ * no date. Counting only the dated items would let the banner miss the very
+ * case the "Cannot tell yet" section exists to surface.
+ */
+export function hasDraftItems({ bucketed, indeterminate }: MergedCalendar): boolean {
+  const dated = [
+    ...bucketed.overdue,
+    ...bucketed.later,
+    // `windows` is a Record of arrays, not an array. A flat `.some()` over
+    // `Object.values(bucketed)` skips it silently, which would drop the most
+    // common case of all: an entity whose deadlines are merely upcoming.
+    ...Object.values(bucketed.windows).flat(),
+  ];
+  return (
+    dated.some((item) => item.status === "draft") ||
+    indeterminate.some((rule) => rule.status === "draft")
+  );
+}
+
 export function mergedCalendar(asOf: string = today()): MergedCalendar {
   // The id travels with the name because the row is only useful if it can point
   // at the screen that resolves it. Naming the entity tells a reader which one
