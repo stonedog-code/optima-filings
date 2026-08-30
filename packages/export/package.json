@@ -1,6 +1,6 @@
 {
   "name": "@optima-compliance/export",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Render compliance deadlines — rule-derived and user-authored — as iCalendar (RFC 5545) or CSV (RFC 4180).",
   "license": "AGPL-3.0-only",
   "author": "StoneDogCode L.L.C.",
