@@ -8,5 +8,6 @@
   "grossRevenueMinorUnits": 4200000,
   "totalAssetsMinorUnits": 1100000,
   "solicitsCharitableContributions": true,
-  "isPrivateFoundation": false
+  "isPrivateFoundation": false,
+  "isSupportingOrganization": false
 }
