@@ -435,16 +435,23 @@ export const EXACTLY_AT_THE_AVERAGE_LINE_CHARITY: EntityFacts = {
 /**
  * One cent over the $50,000 average.
  *
- * $45,000 + $50,000 + $55,000.03 = $150,000.03, so the average is $50,000.01
- * and the organisation is NOT relieved. The pair to
+ * $45,000.00 + $50,000.00 + $55,000.01 = $150,000.01, so the average is
+ * $50,000.0033 and the organisation is NOT relieved. The pair to
  * [[EXACTLY_AT_THE_AVERAGE_LINE_CHARITY]], and the reason the engine rounds the
- * average UP: `Math.ceil(15_000_003 / 3)` is `5_000_001`, which is over the
+ * average UP: `Math.ceil(15_000_001 / 3)` is `5_000_001`, which is over the
  * line, and for an integer threshold that ceiling is the exact integer encoding
  * of the real-valued comparison rather than a conservative nudge.
  *
  * A `Math.floor` would give $50,000.00 here and quietly qualify this
  * organisation for a return it may not file - one cent of under-filing, and
  * exactly the kind of defect no fixture at a round number can see.
+ *
+ * **THE THIRD FIGURE WAS $55,000.03 AND THAT MADE THIS FIXTURE VACUOUS.** The
+ * sum was 15_000_003, which divides by three exactly, so floor and ceil agreed
+ * and the fixture passed against both roundings. Found by planting `Math.floor`
+ * and watching nothing fail. The sum must not be divisible by the number of
+ * years - that is the whole property this fixture exists to exercise, and it is
+ * not visible from reading the numbers.
  */
 export const ONE_CENT_OVER_THE_AVERAGE_LINE_CHARITY: EntityFacts = {
   name: "Example Klickitat Ridge Arts Guild",
@@ -455,7 +462,7 @@ export const ONE_CENT_OVER_THE_AVERAGE_LINE_CHARITY: EntityFacts = {
   fiscalYearEnd: "12-31",
   grossRevenueMinorUnits: 4_500_000, // $45,000.00
   grossRevenuePriorYear1MinorUnits: 5_000_000, // $50,000.00
-  grossRevenuePriorYear2MinorUnits: 5_500_003, // $55,000.03
+  grossRevenuePriorYear2MinorUnits: 5_500_001, // $55,000.01
   totalAssetsMinorUnits: 2_000_000,
   solicitsCharitableContributions: true,
   isPrivateFoundation: false,

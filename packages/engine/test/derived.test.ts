@@ -88,17 +88,24 @@ describe("normally annual gross receipts", () => {
   });
 
   it("rounds UP, which is exact for an integer threshold", () => {
-    // $45,000.00 + $50,000.00 + $55,000.03 = $150,000.03. The true average is
-    // $50,000.01, which is over the line; ceil gives 5_000_001 and floor would
-    // give 5_000_000, quietly qualifying the organisation for a return it may
-    // not file. `ceil(x) <= T` holds exactly when `x <= T` for integer T, so
-    // this is the exact encoding of the comparison, not a safety margin.
+    // $45,000.00 + $50,000.00 + $55,000.01 = $150,000.01, so the true average
+    // is $50,000.0033 — over the line. Ceil gives 5_000_001; floor would give
+    // 5_000_000 and quietly qualify the organisation for a return it may not
+    // file. `ceil(x) <= T` holds exactly when `x <= T` for integer T, so this
+    // is the exact encoding of the comparison, not a safety margin.
+    //
+    // THE THIRD FIGURE WAS 5_500_003 AND THAT MADE THIS ASSERTION VACUOUS: the
+    // sum was 15_000_003, which divides by three exactly, so floor and ceil
+    // returned the same number and the test passed against BOTH. Found by
+    // planting `Math.floor` and watching nothing fail — a green over a case
+    // that could not distinguish the two. The sum must not be divisible by the
+    // number of years, and 15_000_001 is not.
     expect(
       deriveNormalAnnualGrossReceipts({
         ...BASE,
         grossRevenueMinorUnits: 4_500_000,
         grossRevenuePriorYear1MinorUnits: 5_000_000,
-        grossRevenuePriorYear2MinorUnits: 5_500_003,
+        grossRevenuePriorYear2MinorUnits: 5_500_001,
       }),
     ).toBe(5_000_001);
   });
