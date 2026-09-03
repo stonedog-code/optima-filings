@@ -204,6 +204,13 @@ test.describe("the private-foundation question", () => {
     const body = await page.locator("body").innerText();
     for (const identifier of [
       "isPrivateFoundation",
+      // Added with the fact. A list that covered five of the seven would go on
+      // reading as a leak guard while the newest identifier — the one most
+      // likely to have shipped without a label — was the one it did not check.
+      "isSupportingOrganization",
+      "normalAnnualGrossReceiptsMinorUnits",
+      "grossRevenuePriorYear1MinorUnits",
+      "grossRevenuePriorYear2MinorUnits",
       "grossRevenueMinorUnits",
       "totalAssetsMinorUnits",
       "charitableAssetsMinorUnits",
