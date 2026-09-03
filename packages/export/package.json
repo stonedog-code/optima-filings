@@ -34,7 +34,7 @@
   },
   "//dependencies": "The engine is pinned EXACTLY, never by range, for the reason the project file gives about rule packs: a caret would let two installs of identical code resolve different engines. It also has to be a version that actually exists on the registry \u2014 this package sat pinned at 0.1.0 while the engine reached 0.4.0, and publishing it that way would have handed consumers an engine predating the `formation-anniversary` cadence anchor, which returns NOTHING for the rules that use it rather than failing.",
   "dependencies": {
-    "@optima-compliance/engine": "0.6.0"
+    "@optima-compliance/engine": "0.7.0"
   },
   "engines": {
     "node": ">=22"
