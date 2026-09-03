@@ -20,10 +20,10 @@
   },
   "dependencies": {
     "@optima-compliance/db": "0.1.0",
-    "@optima-compliance/engine": "0.6.0",
+    "@optima-compliance/engine": "0.7.0",
     "@optima-compliance/export": "0.2.1",
     "@optima-compliance/reminders": "0.1.0",
-    "@optima-compliance/rules": "2026.8.30",
+    "@optima-compliance/rules": "2026.9.0",
     "@optima-compliance/ui": "0.1.0",
     "next": "^15.1.0",
     "react": "^19.0.0",

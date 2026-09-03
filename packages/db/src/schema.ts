@@ -203,4 +203,46 @@ export const MIGRATIONS: readonly { id: number; name: string; sql: string }[] = 
       ALTER TABLE entities ADD COLUMN is_private_foundation INTEGER;
     `,
   },
+  {
+    id: 6,
+    name: "supporting_organization_and_prior_year_receipts",
+    sql: `
+      -- Whether a 501(c)(3) is a section 509(a)(3) SUPPORTING ORGANISATION.
+      --
+      -- A second carve-out from the 990-N e-Postcard, on a different authority
+      -- from the private-foundation one and therefore a second column rather
+      -- than a widening of the first. Rev. Proc. 2011-15 sec. 3.01 relieves
+      -- from the annual return only an organisation "other than a private
+      -- foundation or a § 509(a)(3) supporting organization", so a supporting
+      -- organisation files Form 990 or Form 990-EZ however small it is.
+      --
+      -- NULLABLE, AND NULL IS AGAIN THE POINT. Yes, no, and nobody has been
+      -- asked are three states. Every row that predates this migration is the
+      -- third, and a NOT NULL DEFAULT 0 would answer "not a supporting
+      -- organisation" on behalf of every existing self-hoster - which is the
+      -- exact under-filing this column exists to remove.
+      ALTER TABLE entities ADD COLUMN is_supporting_organization INTEGER;
+
+      -- Gross receipts for the two taxable years before the one
+      -- gross_revenue_minor_units describes.
+      --
+      -- The federal small-organisation test is not a test on one year. Rev.
+      -- Proc. 2011-15 sec. 4 defines "normally not more than $50,000" as an
+      -- AVERAGE, and evaluating a single year is wrong in both directions: a
+      -- one-off bequest pushes a genuinely small organisation onto a fuller
+      -- return, and a lean year after two large ones qualifies an organisation
+      -- for a return it may not file. The second is under-filing, which is why
+      -- these columns exist rather than the limitation being written down.
+      --
+      -- NULLABLE, and blank is a NORMAL answer here rather than an omission to
+      -- chase: a new organisation has no prior years and never will. The
+      -- engine averages whatever run of years it is given, starting from the
+      -- current one. A DEFAULT 0 would not fail loudly either - it would claim
+      -- every existing organisation earned nothing in both prior years and drag
+      -- its averaged receipts toward zero, qualifying large ones for the
+      -- postcard return.
+      ALTER TABLE entities ADD COLUMN gross_revenue_prior_year_1_minor_units INTEGER;
+      ALTER TABLE entities ADD COLUMN gross_revenue_prior_year_2_minor_units INTEGER;
+    `,
+  },
 ];

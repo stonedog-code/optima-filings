@@ -20,7 +20,8 @@ import {
   rollBackwardToBusinessDay,
   type HolidayCalendar,
 } from "./holidays.js";
-import type { CalendarDate, EntityFacts } from "./facts.js";
+import type { CalendarDate, ConditionableFact, EntityFacts } from "./facts.js";
+import { deriveFactValues, reportableInputsFor, type FactValues } from "./derived.js";
 import { isConditionGroup } from "./rule.js";
 import type {
   Cadence,
@@ -180,12 +181,18 @@ export function evaluate(
   const obligations: Obligation[] = [];
   const indeterminate: IndeterminateRule[] = [];
 
+  // Resolved ONCE, not per rule. `normalAnnualGrossReceiptsMinorUnits` is
+  // computed from three supplied facts rather than read off the entity, and a
+  // per-condition derivation would recompute it for every rule in the pack
+  // while making the evaluator's purity harder to see.
+  const values = deriveFactValues(entity);
+
   for (const rule of rules) {
     if (rule.status === "draft" && !includeDraft) continue;
     if (!appliesToJurisdiction(entity, rule)) continue;
     if (!appliesToEntityType(entity, rule)) continue;
 
-    const conditions = resolveConditions(entity, rule);
+    const conditions = resolveConditions(values, rule);
     if (conditions.truth === "false") continue;
     if (conditions.truth === "unknown") {
       indeterminate.push({
@@ -243,10 +250,10 @@ function ruleInForceOn(rule: Rule, date: CalendarDate): boolean {
 }
 
 function factValue(
-  entity: EntityFacts,
+  values: FactValues,
   fact: RuleCondition["fact"],
 ): number | boolean | undefined {
-  return entity[fact];
+  return values[fact];
 }
 
 /**
@@ -258,8 +265,8 @@ function factValue(
  */
 type Truth = "true" | "false" | "unknown";
 
-function testCondition(entity: EntityFacts, condition: RuleCondition): Truth {
-  const actual = factValue(entity, condition.fact);
+function testCondition(values: FactValues, condition: RuleCondition): Truth {
+  const actual = factValue(values, condition.fact);
   if (actual === undefined) return "unknown";
   switch (condition.op) {
     case "eq":
@@ -284,11 +291,11 @@ function testCondition(entity: EntityFacts, condition: RuleCondition): Truth {
  * nothing is known-true does an unknown member make the group undecidable.
  */
 function testGroup(
-  entity: EntityFacts,
+  values: FactValues,
   group: RuleConditionGroup,
 ): { truth: Truth; missing: string[] } {
   const results = group.anyOf.map((condition) => ({
-    truth: testCondition(entity, condition),
+    truth: testCondition(values, condition),
     fact: condition.fact,
   }));
 
@@ -297,9 +304,21 @@ function testGroup(
   }
   const unknown = results.filter((r) => r.truth === "unknown");
   if (unknown.length > 0) {
-    return { truth: "unknown", missing: unknown.map((r) => r.fact) };
+    return { truth: "unknown", missing: unknown.flatMap((r) => missingInputs(r.fact)) };
   }
   return { truth: "false", missing: [] };
+}
+
+/**
+ * What a user would have to supply to decide `fact`.
+ *
+ * The identity for a fact somebody enters, and the underlying inputs for one
+ * the engine derives - because a row saying "we cannot tell yet, we need your
+ * normal annual gross receipts" names something no form asks for, and a
+ * question nobody can answer is the same dead end as no question at all.
+ */
+function missingInputs(fact: ConditionableFact): string[] {
+  return [...reportableInputsFor(fact)];
 }
 
 /**
@@ -312,7 +331,7 @@ function testGroup(
  * already settled.
  */
 function resolveConditions(
-  entity: EntityFacts,
+  values: FactValues,
   rule: Rule,
 ): { truth: Truth; missing: string[] } {
   const missing: string[] = [];
@@ -320,8 +339,8 @@ function resolveConditions(
 
   for (const node of rule.conditions ?? []) {
     const result = isConditionGroup(node)
-      ? testGroup(entity, node)
-      : { truth: testCondition(entity, node), missing: [node.fact] };
+      ? testGroup(values, node)
+      : { truth: testCondition(values, node), missing: missingInputs(node.fact) };
 
     if (result.truth === "false") return { truth: "false", missing: [] };
     if (result.truth === "unknown") {

@@ -6,6 +6,7 @@ import "server-only";
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { isAnnualExemptOrganizationReturn } from "@optima-compliance/engine";
 import type { IndeterminateRule } from "@optima-compliance/engine";
 import type { DatedItem } from "@optima-compliance/reminders";
 import { bucket, type Bucketed } from "@optima-compliance/reminders";
@@ -121,6 +122,43 @@ export function hasDraftItems({ bucketed, indeterminate }: MergedCalendar): bool
   return (
     dated.some((item) => item.status === "draft") ||
     indeterminate.some((rule) => rule.status === "draft")
+  );
+}
+
+/**
+ * Does this calendar contain a federal annual exempt-organisation return?
+ *
+ * Exported and pure for the same reason `hasDraftItems` is: this repo has no
+ * component tier, so a condition asserted only by rendering a page is a
+ * condition nothing tests. The notice it gates is the one warning on the
+ * dashboard whose subject is losing exempt status rather than paying a fee.
+ *
+ * **Indeterminate rules count.** An organisation that has not answered the
+ * foundation or supporting-organisation question still owes one of these
+ * returns — the product simply cannot say which yet — and it is arguably the
+ * reader who most needs telling. Counting only dated rows would hide the
+ * warning from exactly the entity whose federal position is least settled.
+ *
+ * The rule ids come from `@optima-compliance/engine`, not from a prefix match
+ * here, so the set is one both tiers share and one the rule-pack suite can
+ * assert against what actually ships.
+ */
+export function hasAnnualExemptOrganizationReturn({
+  bucketed,
+  indeterminate,
+}: MergedCalendar): boolean {
+  const dated = [
+    ...bucketed.overdue,
+    ...bucketed.later,
+    // `windows` is a Record of arrays. See `hasDraftItems` — a flat `.some()`
+    // over `Object.values(bucketed)` skips it and drops the commonest case.
+    ...Object.values(bucketed.windows).flat(),
+  ];
+  return (
+    dated.some(
+      (item) =>
+        item.ruleId !== undefined && isAnnualExemptOrganizationReturn(item.ruleId),
+    ) || indeterminate.some((rule) => isAnnualExemptOrganizationReturn(rule.ruleId))
   );
 }
 

@@ -13,10 +13,15 @@ import {
   StyledUnverified,
 } from "@optima-compliance/ui";
 import { getStore, today } from "@/lib/server";
-import { hasDraftItems, mergedCalendar } from "@/lib/calendar";
+import {
+  hasAnnualExemptOrganizationReturn,
+  hasDraftItems,
+  mergedCalendar,
+} from "@/lib/calendar";
 import { WindowList } from "@/components/window-list";
 import { Disclaimer } from "@/components/disclaimer";
 import { DraftBanner } from "@/components/draft-banner";
+import { RevocationNotice } from "@/components/revocation-notice";
 import { describeMissingFacts } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -130,6 +135,16 @@ export default function HomePage() {
       {hasDraftItems({ bucketed, indeterminate }) && <DraftBanner />}
 
       <WindowList bucketed={bucketed} asOf={asOf} />
+
+      {/*
+        The DATA again, not a flag and not an unconditional paragraph. A
+        standing warning on every calendar is furniture; this one appears when
+        the calendar actually holds a return whose non-filing revokes the
+        exemption. See `hasAnnualExemptOrganizationReturn`.
+      */}
+      {hasAnnualExemptOrganizationReturn({ bucketed, indeterminate }) && (
+        <RevocationNotice />
+      )}
 
       <ExportSection hasAnything={hasDatedItems} />
 

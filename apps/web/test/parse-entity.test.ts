@@ -201,6 +201,119 @@ describe("parseEntityForm", () => {
       }
     });
   });
+
+  /**
+   * The supporting-organisation question, under the same discipline.
+   *
+   * A section 509(a)(3) supporting organisation may not file the 990-N
+   * e-Postcard at any receipts level — Rev. Proc. 2011-15 sec. 3.01 relieves
+   * only an organisation "other than a private foundation or a § 509(a)(3)
+   * supporting organization". So reading "nobody answered" as "not a supporting
+   * organisation" is the same under-filing the foundation question was added to
+   * remove, one question along.
+   */
+  describe("the supporting-organisation question", () => {
+    it("omits the fact entirely when nobody has answered", () => {
+      const result = parseEntityForm(form(valid));
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect("isSupportingOrganization" in result.facts).toBe(false);
+    });
+
+    it("reads an explicit yes as true", () => {
+      const result = parseEntityForm(
+        form({ ...valid, isSupportingOrganization: "yes" }),
+      );
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.facts.isSupportingOrganization).toBe(true);
+    });
+
+    it("reads an explicit no as false, and keeps it distinct from unanswered", () => {
+      const result = parseEntityForm(
+        form({ ...valid, isSupportingOrganization: "no" }),
+      );
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.facts.isSupportingOrganization).toBe(false);
+      expect("isSupportingOrganization" in result.facts).toBe(true);
+    });
+
+    it("treats anything it does not recognise as unanswered, never as no", () => {
+      for (const value of ["", "true", "false", "YES", "1", "maybe"]) {
+        const result = parseEntityForm(
+          form({ ...valid, isSupportingOrganization: value }),
+        );
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+        expect("isSupportingOrganization" in result.facts).toBe(false);
+      }
+    });
+
+    it("is independent of the foundation answer", () => {
+      // Two questions, two authorities, two facts. A parser that wired them to
+      // one control would pass every assertion above and decide one question
+      // from the other's answer.
+      const result = parseEntityForm(
+        form({ ...valid, isPrivateFoundation: "no", isSupportingOrganization: "yes" }),
+      );
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.facts.isPrivateFoundation).toBe(false);
+      expect(result.facts.isSupportingOrganization).toBe(true);
+    });
+  });
+
+  /**
+   * The two prior years of gross receipts.
+   *
+   * They exist because "gross receipts normally $50,000 or less" is an average
+   * across three taxable years (Rev. Proc. 2011-15 sec. 4), not a test on one
+   * year's figure. Blank is a NORMAL answer — a new organisation has no prior
+   * years — so the parser must omit rather than zero, or the average is dragged
+   * down by years nobody described.
+   */
+  describe("the prior-year receipts", () => {
+    it("omits both when neither is given", () => {
+      const result = parseEntityForm(form(valid));
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect("grossRevenuePriorYear1MinorUnits" in result.facts).toBe(false);
+      expect("grossRevenuePriorYear2MinorUnits" in result.facts).toBe(false);
+    });
+
+    it("converts dollars to integer minor units", () => {
+      const result = parseEntityForm(
+        form({
+          ...valid,
+          grossRevenuePriorYear1: "30000.00",
+          grossRevenuePriorYear2: "55000.03",
+        }),
+      );
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.facts.grossRevenuePriorYear1MinorUnits).toBe(3_000_000);
+      // The cent that a float round-trip loses, and the one an averaging test
+      // can turn into a wrong return.
+      expect(result.facts.grossRevenuePriorYear2MinorUnits).toBe(5_500_003);
+    });
+
+    it("keeps a genuine zero, which is not the same as a blank", () => {
+      // An organisation really can take nothing in a year. Blank means "we were
+      // not told"; zero means "nothing came in", and they average differently.
+      const result = parseEntityForm(form({ ...valid, grossRevenuePriorYear1: "0" }));
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.facts.grossRevenuePriorYear1MinorUnits).toBe(0);
+    });
+
+    it("treats a blank as unsupplied rather than as zero", () => {
+      const result = parseEntityForm(form({ ...valid, grossRevenuePriorYear1: "  " }));
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect("grossRevenuePriorYear1MinorUnits" in result.facts).toBe(false);
+    });
+  });
 });
 
 describe("parseTriState", () => {

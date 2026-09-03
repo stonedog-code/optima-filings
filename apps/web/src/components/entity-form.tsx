@@ -186,6 +186,58 @@ export function EntityFormFields({ entity }: { entity?: StoredEntity }) {
         </span>
       </div>
 
+      {/*
+        The two prior years, asked for because the federal small-organisation
+        test is not a test on one year. "Gross receipts normally $50,000 or
+        less" is an average across three, and evaluating the current year alone
+        is wrong in BOTH directions — a legacy year pushes a genuinely small
+        organisation onto a fuller return, and a lean year after two large ones
+        qualifies one for a return it may not file.
+
+        Optional in the strong sense, and the hint says so: a new organisation
+        has no prior years and never will, so blank is a real answer and not a
+        gap to nag about.
+      */}
+      <div className={fieldClass}>
+        <StyledFormLabel htmlFor="entity-gross-revenue-prior-1" optional>
+          Gross revenue, previous year
+        </StyledFormLabel>
+        <StyledInputText
+          id="entity-gross-revenue-prior-1"
+          type="number"
+          name="grossRevenuePriorYear1"
+          min="0"
+          step="0.01"
+          defaultValue={toDollars(entity?.grossRevenuePriorYear1MinorUnits)}
+          aria-describedby="entity-gross-revenue-prior-1-hint"
+        />
+        <span className={hintClass} id="entity-gross-revenue-prior-1-hint">
+          The year before the figure above. Whether you may file the 990-N
+          e-Postcard turns on an <strong>average of three years</strong>, not on
+          one, so filling these in changes the answer for an organisation that
+          had one unusual year. Leave blank if the organisation is too new, or
+          if you do not have the figure.
+        </span>
+      </div>
+
+      <div className={fieldClass}>
+        <StyledFormLabel htmlFor="entity-gross-revenue-prior-2" optional>
+          Gross revenue, two years before
+        </StyledFormLabel>
+        <StyledInputText
+          id="entity-gross-revenue-prior-2"
+          type="number"
+          name="grossRevenuePriorYear2"
+          min="0"
+          step="0.01"
+          defaultValue={toDollars(entity?.grossRevenuePriorYear2MinorUnits)}
+          aria-describedby="entity-gross-revenue-prior-2-hint"
+        />
+        <span className={hintClass} id="entity-gross-revenue-prior-2-hint">
+          Only used alongside the year above it.
+        </span>
+      </div>
+
       <div className={fieldClass}>
         <StyledFormLabel htmlFor="entity-total-assets" optional>
           Total assets
@@ -250,6 +302,37 @@ export function EntityFormFields({ entity }: { entity?: StoredEntity }) {
           For 501(c)(3) organisations. Which federal return you file turns on
           this: a private foundation files <strong>Form 990-PF</strong> whatever
           its income, and cannot use the 990-N e-Postcard or Form 990.{" "}
+          <strong>Leave it blank if you do not know</strong> — the 990 family is
+          then reported as “cannot tell yet” rather than being decided for you.
+        </span>
+      </div>
+
+      <div className={fieldClass}>
+        {/*
+          A select for the same reason the question above it is one: three
+          states, and the unanswered one has to survive the form. A supporting
+          organisation may not file the 990-N e-Postcard at any size, so an
+          unticked box arriving as a firm "no" is the under-filing this
+          question exists to remove.
+        */}
+        <StyledFormLabel htmlFor="entity-supporting-organization" optional>
+          Supporting organisation
+        </StyledFormLabel>
+        <StyledInputSelect
+          id="entity-supporting-organization"
+          name="isSupportingOrganization"
+          defaultValue={triStateValue(entity?.isSupportingOrganization)}
+          aria-describedby="entity-supporting-organization-hint"
+          options={[
+            { value: "", label: "I do not know yet" },
+            { value: "no", label: "No" },
+            { value: "yes", label: "Yes — a 509(a)(3) supporting organisation" },
+          ]}
+        />
+        <span className={hintClass} id="entity-supporting-organization-hint">
+          A 509(a)(3) supporting organisation exists to support another public
+          charity. It files <strong>Form 990 or Form 990-EZ</strong> however
+          small it is, and cannot use the 990-N e-Postcard.{" "}
           <strong>Leave it blank if you do not know</strong> — the 990 family is
           then reported as “cannot tell yet” rather than being decided for you.
         </span>

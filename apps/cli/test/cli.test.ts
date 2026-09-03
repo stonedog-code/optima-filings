@@ -4,7 +4,12 @@
  */
 
 import { parseArgs, todayUtc } from "../src/args.js";
-import { DISCLAIMER, formatMoney, renderResult } from "../src/format.js";
+import {
+  DISCLAIMER,
+  REVOCATION_NOTICE,
+  formatMoney,
+  renderResult,
+} from "../src/format.js";
 import type { EvaluationResult } from "@optima-compliance/engine";
 
 describe("parseArgs", () => {
@@ -234,5 +239,93 @@ describe("renderResult", () => {
     // Every row's WHERE column starts at the same offset.
     const offsets = dueLines.map((line) => line.indexOf("US"));
     expect(new Set(offsets).size).toBe(1);
+  });
+});
+
+/**
+ * The consequence that is not a late fee.
+ *
+ * 26 U.S.C. 6033(j) revokes exempt status automatically when an annual return
+ * or e-Postcard goes unfiled for three consecutive years. The rule pack has
+ * carried that in a `notes` field since the first federal rule was written and
+ * no user of this tool has ever seen it — a printed row for Form 990-N looked
+ * exactly like a printed row for a state annual report.
+ *
+ * Both directions are asserted. Never printing it is the state before this
+ * change; always printing it is the failure the web tier's draft banner already
+ * made once, and a warning that is always there is furniture.
+ */
+describe("the automatic-revocation notice", () => {
+  const federalObligation = {
+    ...baseObligation,
+    ruleId: "us-federal-form-990-n",
+    title: "Form 990-N (e-Postcard)",
+    agency: "Internal Revenue Service",
+    jurisdiction: "US",
+    dueOn: "2026-05-15",
+    citation: "26 U.S.C. 6033(a)(3), (i)",
+  } as const;
+
+  it("is absent from a run with no federal return on it", () => {
+    // An LLC filing a state annual report has no exemption to lose.
+    const output = render({
+      obligations: [{ ...baseObligation, status: "active" }],
+      indeterminate: [],
+    });
+    expect(output).not.toContain("CONSECUTIVE YEARS");
+  });
+
+  it("is absent when nothing is due at all", () => {
+    expect(render(emptyResult)).not.toContain("CONSECUTIVE YEARS");
+  });
+
+  it.each([
+    "us-federal-form-990",
+    "us-federal-form-990-ez",
+    "us-federal-form-990-n",
+    "us-federal-form-990-pf",
+  ])("is printed for a dated %s", (ruleId) => {
+    // All four individually. Section 6033(j) counts a missed 990-PF exactly as
+    // it counts a missed e-Postcard, and covering three of the four would leave
+    // private foundations unwarned.
+    const output = render({
+      obligations: [{ ...federalObligation, ruleId, status: "active" }],
+      indeterminate: [],
+    });
+    expect(output).toContain(REVOCATION_NOTICE);
+  });
+
+  it("is printed when the only federal row is UNDECIDED", () => {
+    // The case most easily missed and least safe to miss: an organisation that
+    // has not answered the foundation or supporting-organisation question still
+    // owes one of these returns.
+    const output = render({
+      obligations: [],
+      indeterminate: [
+        {
+          ruleId: "us-federal-form-990-n",
+          title: "Form 990-N (e-Postcard)",
+          jurisdiction: "US",
+          missingFacts: ["isSupportingOrganization"],
+        },
+      ],
+    } as unknown as EvaluationResult);
+    expect(output).toContain(REVOCATION_NOTICE);
+  });
+
+  it("cites the statute and disclaims any knowledge of past filings", () => {
+    // Nothing here records what anybody filed in a prior year, so the notice
+    // must state the rule and say nothing about the reader. A compliance tool
+    // implying somebody's exemption is at risk, on evidence it does not have,
+    // is a worse claim than the silence it replaced.
+    expect(REVOCATION_NOTICE).toContain("26 U.S.C. 6033(j)");
+    expect(REVOCATION_NOTICE).toContain("nothing here knows what you have filed");
+  });
+
+  it("carries no issue id, branch name or internal detail", () => {
+    // Everything this tool prints is read by a customer. The reasoning belongs
+    // in the code comment and in the tracker, never in the output.
+    expect(REVOCATION_NOTICE).not.toMatch(/NEH-\d+/);
+    expect(REVOCATION_NOTICE).not.toMatch(/\b(?:fix|feat|chore)\//);
   });
 });

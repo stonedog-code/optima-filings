@@ -23,7 +23,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@optima-compliance/engine": "0.6.0"
+    "@optima-compliance/engine": "0.7.0"
   },
   "engines": {
     "node": ">=22.5"
