@@ -101,8 +101,15 @@ export function parseEntityForm(form: FormData): ParseResult {
   }
 
   const isPrivateFoundation = parseTriState(text("isPrivateFoundation"));
+  const isSupportingOrganization = parseTriState(text("isSupportingOrganization"));
 
   const grossRevenueMinorUnits = dollarsToMinorUnits(text("grossRevenue"));
+  const grossRevenuePriorYear1MinorUnits = dollarsToMinorUnits(
+    text("grossRevenuePriorYear1"),
+  );
+  const grossRevenuePriorYear2MinorUnits = dollarsToMinorUnits(
+    text("grossRevenuePriorYear2"),
+  );
   const totalAssetsMinorUnits = dollarsToMinorUnits(text("totalAssets"));
   const charitableAssetsMinorUnits = dollarsToMinorUnits(text("charitableAssets"));
 
@@ -119,6 +126,16 @@ export function parseEntityForm(form: FormData): ParseResult {
       // decide as indeterminate; a 0 would read as "earned nothing" and quietly
       // qualify a large charity for the postcard return.
       ...(grossRevenueMinorUnits !== undefined ? { grossRevenueMinorUnits } : {}),
+      // Blank is a real answer here, not a gap: a new organisation has no prior
+      // years. Omitted rather than zeroed for the same reason as the line
+      // above — a 0 would be averaged in as "earned nothing that year" and drag
+      // the three-year figure down, which is the under-filing direction.
+      ...(grossRevenuePriorYear1MinorUnits !== undefined
+        ? { grossRevenuePriorYear1MinorUnits }
+        : {}),
+      ...(grossRevenuePriorYear2MinorUnits !== undefined
+        ? { grossRevenuePriorYear2MinorUnits }
+        : {}),
       ...(totalAssetsMinorUnits !== undefined ? { totalAssetsMinorUnits } : {}),
       ...(charitableAssetsMinorUnits !== undefined
         ? { charitableAssetsMinorUnits }
@@ -127,6 +144,7 @@ export function parseEntityForm(form: FormData): ParseResult {
       // always present in the submission.
       solicitsCharitableContributions: form.get("solicits") === "true",
       ...(isPrivateFoundation === undefined ? {} : { isPrivateFoundation }),
+      ...(isSupportingOrganization === undefined ? {} : { isSupportingOrganization }),
     },
   };
 }

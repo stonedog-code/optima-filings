@@ -36,6 +36,8 @@ const CONDITIONABLE_FACTS = [
   "employeeCount",
   "solicitsCharitableContributions",
   "isPrivateFoundation",
+  "isSupportingOrganization",
+  "normalAnnualGrossReceiptsMinorUnits",
 ];
 
 const errors = [];

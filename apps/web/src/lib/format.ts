@@ -165,6 +165,11 @@ export const CONDITIONABLE_FACT_LABELS: Record<ConditionableFact, string> = {
   employeeCount: "how many people you employ",
   solicitsCharitableContributions: "whether you ask the public for donations",
   isPrivateFoundation: "whether you are a private foundation",
+  isSupportingOrganization: "whether you are a 509(a)(3) supporting organisation",
+  // Derived, so nobody can answer it directly — the evaluator reports the input
+  // that would decide it instead, and this label exists so a rule that ever
+  // does surface the derived name still reads as English.
+  normalAnnualGrossReceiptsMinorUnits: "your gross revenue for the last three years",
 };
 
 /**

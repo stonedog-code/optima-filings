@@ -101,6 +101,37 @@ export interface EntityFacts {
   /** Gross annual revenue in **integer minor units** (cents). */
   grossRevenueMinorUnits?: number;
 
+  /**
+   * Gross receipts for the taxable year **immediately before** the one
+   * `grossRevenueMinorUnits` describes, in integer minor units.
+   *
+   * Optional, and optional in the strong sense: leaving it out is a normal
+   * answer, not a gap to be nagged about. It exists because several federal
+   * thresholds are not tests on one year's figure at all.
+   *
+   * **Form 990-N eligibility is a "normally" test, and "normally" means an
+   * average.** Rev. Proc. 2011-15, section 4(3): an organisation in existence
+   * three years or more has annual gross receipts normally not more than
+   * $50,000 if "the organization's average annual gross receipts for the
+   * immediately preceding three taxable years, including the taxable year for
+   * which the return is filed, is $50,000 or less". Evaluating the current year
+   * alone gets that wrong in BOTH directions — a one-off bequest year pushes a
+   * genuinely small organisation onto Form 990-EZ, and a lean year after two
+   * large ones qualifies an organisation for a return it may not file.
+   *
+   * See `normalAnnualGrossReceiptsMinorUnits` for how the three are combined,
+   * and what the engine does when only some of them are supplied.
+   */
+  grossRevenuePriorYear1MinorUnits?: number;
+
+  /**
+   * Gross receipts for the taxable year **two years before** the one
+   * `grossRevenueMinorUnits` describes, in integer minor units.
+   *
+   * The third of the three years Rev. Proc. 2011-15 section 4(3) averages.
+   */
+  grossRevenuePriorYear2MinorUnits?: number;
+
   /** Total assets in **integer minor units** (cents). */
   totalAssetsMinorUnits?: number;
 
@@ -158,9 +189,50 @@ export interface EntityFacts {
    * own fact and a change to the 990-EZ floor rather than a reuse of this one.
    */
   isPrivateFoundation?: boolean;
+
+  /**
+   * Whether this 501(c)(3) is a **section 509(a)(3) supporting organisation**.
+   *
+   * A second carve-out from Form 990-N, on a different authority from
+   * `isPrivateFoundation` and therefore a second fact rather than a widening of
+   * the first. Rev. Proc. 2011-15, section 3.01, relieves from the annual-return
+   * requirement an organisation described in section 501(c) "(other than a
+   * private foundation **or a section 509(a)(3) supporting organization**)"
+   * whose gross receipts are normally not more than $50,000 - and section 3.03
+   * makes Form 990-N the notice such a relieved organisation files instead. A
+   * supporting organisation is outside that relief, so it files Form 990 or
+   * Form 990-EZ however small it is. The exclusion is statutory in origin: the
+   * Pension Protection Act of 2006 removed the Secretary's authority under
+   * section 6033(a)(3)(B) to relieve supporting organisations at all
+   * (Rev. Proc. 2011-15, section 2.04).
+   *
+   * **No default, for the same reason `isPrivateFoundation` has none.** Reading
+   * an unanswered question as "not a supporting organisation" restores exactly
+   * the under-filing this fact removes, for every entity that predates it.
+   *
+   * Scope, stated because a partial carve-out modelled as a whole one is worse
+   * than none: section 6033(a)(3)(A)(ii) with (a)(3)(C)(iv) keeps a mandatory
+   * exception for an organisation "operated, supervised, or controlled by or in
+   * connection with a religious organization" whose gross receipts are normally
+   * not more than $5,000, and such an organisation may still use Form 990-N.
+   * **That exception is not modelled.** It cannot be expressed in the v1 rule
+   * schema, which allows one level of `anyOf` and no nesting, without breaking
+   * the one-return invariant. The consequence of leaving it out is that a
+   * supporting organisation this small is shown Form 990-EZ when Form 990-N
+   * would have done - over-filing, the direction this pack chooses when it must
+   * choose, and a return the IRS permits any organisation to file voluntarily.
+   */
+  isSupportingOrganization?: boolean;
 }
 
-/** The fact names a rule condition is allowed to test. Enforced by the validator. */
+/**
+ * The fact names a rule condition is allowed to test. Enforced by the validator.
+ *
+ * **Not the same set as the keys of `EntityFacts`, and deliberately so.** Most
+ * entries are facts somebody types in; `normalAnnualGrossReceiptsMinorUnits` is
+ * derived from three of them by a rule the IRS wrote, and the rules test the
+ * derived value because that is what the regulation tests.
+ */
 export const CONDITIONABLE_FACTS = [
   "grossRevenueMinorUnits",
   "totalAssetsMinorUnits",
@@ -168,6 +240,12 @@ export const CONDITIONABLE_FACTS = [
   "employeeCount",
   "solicitsCharitableContributions",
   "isPrivateFoundation",
+  "isSupportingOrganization",
+  // DERIVED, not supplied. See `deriveFactValues` in `derived.ts` - it is
+  // computed from `grossRevenueMinorUnits` and the two prior-year facts per
+  // Rev. Proc. 2011-15 section 4. Conditionable because the rules test it; not
+  // a member of `EntityFacts` because nobody enters it.
+  "normalAnnualGrossReceiptsMinorUnits",
 ] as const;
 export type ConditionableFact = (typeof CONDITIONABLE_FACTS)[number];
 

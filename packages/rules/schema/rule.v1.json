@@ -20,8 +20,11 @@
             "charitableAssetsMinorUnits",
             "employeeCount",
             "solicitsCharitableContributions",
-            "isPrivateFoundation"
-          ]
+            "isPrivateFoundation",
+            "isSupportingOrganization",
+            "normalAnnualGrossReceiptsMinorUnits"
+          ],
+          "description": "Most of these are facts an entity supplies. normalAnnualGrossReceiptsMinorUnits is DERIVED by the engine from gross revenue and the two prior years, per Rev. Proc. 2011-15 section 4 - a federal 'normally not more than' test is an average, not a single year's figure, so a rule that means the IRS test must name the derived fact and not the raw one."
         },
         "op": {
           "enum": [

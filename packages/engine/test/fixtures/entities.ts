@@ -28,6 +28,7 @@ export const WA_SMALL_CHARITY: EntityFacts = {
   // `undefined` is a real third state here, so leaving it off would make this
   // fixture undecidable rather than making it a public charity.
   isPrivateFoundation: false,
+  isSupportingOrganization: false,
 };
 
 export const WA_LARGE_CHARITY: EntityFacts = {
@@ -41,6 +42,7 @@ export const WA_LARGE_CHARITY: EntityFacts = {
   totalAssetsMinorUnits: 890_000_000,
   solicitsCharitableContributions: true,
   isPrivateFoundation: false,
+  isSupportingOrganization: false,
 };
 
 export const OR_LLC: EntityFacts = {
@@ -136,6 +138,7 @@ export const ENDOWED_CHARITY: EntityFacts = {
   totalAssetsMinorUnits: 1_200_000_000, // $12M — far over the $500k assets test
   solicitsCharitableContributions: false,
   isPrivateFoundation: false,
+  isSupportingOrganization: false,
 };
 
 /**
@@ -157,6 +160,7 @@ export const ENDOWED_NON_SOLICITING_CHARITY: EntityFacts = {
   charitableAssetsMinorUnits: 800_000_000, // $8M, far over the $250k line
   solicitsCharitableContributions: false,
   isPrivateFoundation: false,
+  isSupportingOrganization: false,
 };
 
 /**
@@ -187,6 +191,7 @@ export const JUNE_YEAR_END_SOLICITING_CHARITY: EntityFacts = {
   totalAssetsMinorUnits: 4_000_000,
   solicitsCharitableContributions: true,
   isPrivateFoundation: false,
+  isSupportingOrganization: false,
 };
 
 /**
@@ -206,6 +211,7 @@ export const CHARITY_WITHOUT_REVENUE: EntityFacts = {
   fiscalYearEnd: "12-31",
   solicitsCharitableContributions: true,
   isPrivateFoundation: false,
+  isSupportingOrganization: false,
 };
 
 /**
@@ -235,6 +241,12 @@ export const PRIVATE_FOUNDATION: EntityFacts = {
   totalAssetsMinorUnits: 3_000_000, // $30,000 — well under every other line
   solicitsCharitableContributions: false,
   isPrivateFoundation: true,
+  // Answered even though no rule needs it from a foundation: the 990/990-EZ/N
+  // rules are already ruled out by `isPrivateFoundation eq false` being a known
+  // FALSE, which short-circuits before any other condition is read. Stated
+  // anyway so the fixture is a complete organisation rather than one that
+  // happens to be saved by evaluation order.
+  isSupportingOrganization: false,
 };
 
 /**
@@ -257,4 +269,195 @@ export const FOUNDATION_QUESTION_UNANSWERED: EntityFacts = {
   grossRevenueMinorUnits: 2_000_000,
   totalAssetsMinorUnits: 3_000_000,
   solicitsCharitableContributions: false,
+};
+
+/**
+ * A section 509(a)(3) supporting organisation, small.
+ *
+ * The entity this pack used to get wrong. It is a 501(c)(3), it is not a
+ * private foundation, and its receipts are far under $50,000 - so before
+ * `isSupportingOrganization` existed it matched `us-federal-form-990-n` and was
+ * given a date for the e-Postcard. **Rev. Proc. 2011-15 sec. 3.01 relieves from
+ * the annual return only an organisation "other than a private foundation or a
+ * § 509(a)(3) supporting organization"**, and sec. 3.03 makes Form 990-N the
+ * notice a relieved organisation files. A supporting organisation is outside
+ * the relief, so it files Form 990 or Form 990-EZ at any size.
+ *
+ * The numbers are not incidental. A supporting organisation with LARGE receipts
+ * would already have been excluded from 990-N on the amount, so an assertion
+ * built on one would have passed before the fix as well - the same trap the
+ * private-foundation fixture was written to avoid. Only a SMALL supporting
+ * organisation distinguishes the fix from the bug.
+ *
+ * Its assets are under $500,000 and its receipts under $200,000, so the return
+ * it owes is the 990-EZ. That is the second half of the fix: excluding it from
+ * 990-N without giving Form 990-EZ a supporting-organisation branch would drop
+ * it below that rule's receipts floor and it would match NOTHING - silence,
+ * which is under-filing wearing a clean calendar.
+ */
+export const SUPPORTING_ORGANIZATION: EntityFacts = {
+  name: "Example Whatcom Library Friends Trust",
+  entityTypes: ["501c3"],
+  formedOn: "2012-06-18",
+  homeJurisdiction: "US-WA",
+  jurisdictions: ["US", "US-WA"],
+  fiscalYearEnd: "12-31",
+  grossRevenueMinorUnits: 1_800_000, // $18,000 - far under the $50,000 line
+  totalAssetsMinorUnits: 9_000_000, // $90,000 - under the $500,000 line
+  solicitsCharitableContributions: false,
+  isPrivateFoundation: false,
+  isSupportingOrganization: true,
+};
+
+/**
+ * Identical to [[SUPPORTING_ORGANIZATION]] except that nobody has asked.
+ *
+ * Every entity that existed before the question did looks like this, so it is
+ * the common case rather than an edge one - exactly as it was for the
+ * foundation question. The whole 990 family must come back **indeterminate**,
+ * naming the question, rather than being decided. Reading the absence as "not a
+ * supporting organisation" is the under-filing the fact was added to remove.
+ */
+export const SUPPORTING_ORGANIZATION_QUESTION_UNANSWERED: EntityFacts = {
+  name: "Example Whatcom Library Friends Fund",
+  entityTypes: ["501c3"],
+  formedOn: "2012-06-18",
+  homeJurisdiction: "US-WA",
+  jurisdictions: ["US", "US-WA"],
+  fiscalYearEnd: "12-31",
+  grossRevenueMinorUnits: 1_800_000,
+  totalAssetsMinorUnits: 9_000_000,
+  solicitsCharitableContributions: false,
+  isPrivateFoundation: false,
+};
+
+/**
+ * One large year, two small ones. Averages BELOW $50,000.
+ *
+ * $60,000 + $30,000 + $30,000 = $120,000 over three years, so the average is
+ * **$40,000** and Rev. Proc. 2011-15 sec. 4(3) says this organisation's gross
+ * receipts are normally not more than $50,000. It may file the e-Postcard.
+ *
+ * The arithmetic is done here rather than taken from the engine, deliberately:
+ * a fixture whose expectation is computed by the function under test agrees
+ * with that function by construction and proves nothing. $120,000 / 3 =
+ * $40,000, which is $10,000 clear of the line - a margin, not a boundary, so
+ * this fixture cannot pass or fail on a rounding question.
+ *
+ * A single-year test says $60,000 and sends it to Form 990-EZ. That direction
+ * is over-filing, which this pack tolerates when it must choose; it is the
+ * gentler of the two errors a one-year test makes, and it is not the reason the
+ * averaging was implemented. See [[LEAN_YEAR_AFTER_LARGE_YEARS_CHARITY]] for
+ * the reason.
+ */
+export const BEQUEST_YEAR_CHARITY: EntityFacts = {
+  name: "Example Chelan Trailhead Society",
+  entityTypes: ["501c3"],
+  formedOn: "2009-02-11",
+  homeJurisdiction: "US-WA",
+  jurisdictions: ["US", "US-WA"],
+  fiscalYearEnd: "12-31",
+  grossRevenueMinorUnits: 6_000_000, // $60,000 - a one-off legacy year
+  grossRevenuePriorYear1MinorUnits: 3_000_000, // $30,000
+  grossRevenuePriorYear2MinorUnits: 3_000_000, // $30,000
+  totalAssetsMinorUnits: 4_000_000,
+  solicitsCharitableContributions: true,
+  isPrivateFoundation: false,
+  isSupportingOrganization: false,
+};
+
+/**
+ * One lean year after two large ones. Averages ABOVE $50,000.
+ *
+ * $20,000 + $200,000 + $200,000 = $420,000 over three years, so the average is
+ * **$140,000** - far over the line, and this organisation may NOT file the
+ * e-Postcard. Its current-year receipts are under $200,000 and its assets under
+ * $500,000, so the return it owes is the 990-EZ.
+ *
+ * **This is the fixture that matters.** A single-year test reads $20,000 and
+ * names Form 990-N - a return this organisation is not eligible to file. That
+ * is under-filing, the error direction this pack exists to avoid, and it is why
+ * the averaging is implemented rather than the limitation merely being written
+ * down. The issue that reported the single-year test called its error direction
+ * "conservative"; measured against Rev. Proc. 2011-15 sec. 4 it is conservative
+ * in one direction and hazardous in the other, and the ticket's premise held
+ * only for the half it had looked at.
+ *
+ * $140,000 against a $50,000 line is a wide margin on purpose, for the same
+ * reason [[BEQUEST_YEAR_CHARITY]]'s is: a fixture that sits on a boundary tests
+ * an operator, and a fixture that sits well clear of one tests the model.
+ */
+export const LEAN_YEAR_AFTER_LARGE_YEARS_CHARITY: EntityFacts = {
+  name: "Example Yakima Riverkeepers Alliance",
+  entityTypes: ["501c3"],
+  formedOn: "2006-08-22",
+  homeJurisdiction: "US-WA",
+  jurisdictions: ["US", "US-WA"],
+  fiscalYearEnd: "12-31",
+  grossRevenueMinorUnits: 2_000_000, // $20,000 - a lean year
+  grossRevenuePriorYear1MinorUnits: 20_000_000, // $200,000
+  grossRevenuePriorYear2MinorUnits: 20_000_000, // $200,000
+  totalAssetsMinorUnits: 4_000_000,
+  solicitsCharitableContributions: true,
+  isPrivateFoundation: false,
+  isSupportingOrganization: false,
+};
+
+/**
+ * Exactly on the $50,000 line, from a three-year average.
+ *
+ * $45,000 + $50,000 + $55,000 = $150,000, average **exactly $50,000**. Rev.
+ * Proc. 2011-15 sec. 4(3) says "is $50,000 or less", so this organisation is
+ * relieved and files the e-Postcard - the `lte` operator, not `lt`, and an
+ * off-by-one there would be invisible to every other fixture.
+ *
+ * The three years are deliberately unequal. Three identical years would also
+ * average $50,000, and would pass just as well against an engine that ignored
+ * the prior years entirely - which is precisely the fixture-that-tests-nothing
+ * this repo has been caught by twice.
+ */
+export const EXACTLY_AT_THE_AVERAGE_LINE_CHARITY: EntityFacts = {
+  name: "Example Klickitat Ridge Arts Council",
+  entityTypes: ["501c3"],
+  formedOn: "2011-01-09",
+  homeJurisdiction: "US-WA",
+  jurisdictions: ["US", "US-WA"],
+  fiscalYearEnd: "12-31",
+  grossRevenueMinorUnits: 4_500_000, // $45,000
+  grossRevenuePriorYear1MinorUnits: 5_000_000, // $50,000
+  grossRevenuePriorYear2MinorUnits: 5_500_000, // $55,000
+  totalAssetsMinorUnits: 2_000_000,
+  solicitsCharitableContributions: true,
+  isPrivateFoundation: false,
+  isSupportingOrganization: false,
+};
+
+/**
+ * One cent over the $50,000 average.
+ *
+ * $45,000 + $50,000 + $55,000.03 = $150,000.03, so the average is $50,000.01
+ * and the organisation is NOT relieved. The pair to
+ * [[EXACTLY_AT_THE_AVERAGE_LINE_CHARITY]], and the reason the engine rounds the
+ * average UP: `Math.ceil(15_000_003 / 3)` is `5_000_001`, which is over the
+ * line, and for an integer threshold that ceiling is the exact integer encoding
+ * of the real-valued comparison rather than a conservative nudge.
+ *
+ * A `Math.floor` would give $50,000.00 here and quietly qualify this
+ * organisation for a return it may not file - one cent of under-filing, and
+ * exactly the kind of defect no fixture at a round number can see.
+ */
+export const ONE_CENT_OVER_THE_AVERAGE_LINE_CHARITY: EntityFacts = {
+  name: "Example Klickitat Ridge Arts Guild",
+  entityTypes: ["501c3"],
+  formedOn: "2011-01-09",
+  homeJurisdiction: "US-WA",
+  jurisdictions: ["US", "US-WA"],
+  fiscalYearEnd: "12-31",
+  grossRevenueMinorUnits: 4_500_000, // $45,000.00
+  grossRevenuePriorYear1MinorUnits: 5_000_000, // $50,000.00
+  grossRevenuePriorYear2MinorUnits: 5_500_003, // $55,000.03
+  totalAssetsMinorUnits: 2_000_000,
+  solicitsCharitableContributions: true,
+  isPrivateFoundation: false,
+  isSupportingOrganization: false,
 };

@@ -41,6 +41,27 @@ export type {
   MonthDay,
 } from "./facts.js";
 
+// The derivation Rev. Proc. 2011-15 section 4 defines, exported because a
+// consumer showing an organisation WHY it is or is not eligible for the
+// e-Postcard needs the same number the rules were evaluated against - and
+// recomputing it in the consumer is how two answers drift apart.
+export {
+  deriveFactValues,
+  deriveNormalAnnualGrossReceipts,
+  reportableInputsFor,
+} from "./derived.js";
+export type { FactValues } from "./derived.js";
+
+// The consequence a compliance calendar must not leave unsaid: missing an
+// annual return three years running revokes exempt status automatically.
+// Shared rather than mirrored, so both tiers warn about the same rules.
+export {
+  ANNUAL_EXEMPT_ORGANIZATION_RETURNS,
+  AUTOMATIC_REVOCATION,
+  isAnnualExemptOrganizationReturn,
+} from "./annualReturn.js";
+export type { AnnualExemptOrganizationReturn } from "./annualReturn.js";
+
 export { isConditionGroup } from "./rule.js";
 export type {
   Cadence,

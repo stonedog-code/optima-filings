@@ -31,6 +31,9 @@ interface EntityRow {
   employee_count: number | null;
   solicits_charitable_contributions: number | null;
   is_private_foundation: number | null;
+  is_supporting_organization: number | null;
+  gross_revenue_prior_year_1_minor_units: number | null;
+  gross_revenue_prior_year_2_minor_units: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -82,6 +85,24 @@ function toFacts(row: EntityRow): StoredEntity {
     ...(row.is_private_foundation === null
       ? {}
       : { isPrivateFoundation: row.is_private_foundation === 1 }),
+    // The same three states again, for the same reason. A supporting
+    // organisation may not file the 990-N e-Postcard at any size, so an
+    // unanswered question read as "no" is under-filing.
+    ...(row.is_supporting_organization === null
+      ? {}
+      : { isSupportingOrganization: row.is_supporting_organization === 1 }),
+    ...("v" in optional(row.gross_revenue_prior_year_1_minor_units)
+      ? {
+          grossRevenuePriorYear1MinorUnits:
+            row.gross_revenue_prior_year_1_minor_units as number,
+        }
+      : {}),
+    ...("v" in optional(row.gross_revenue_prior_year_2_minor_units)
+      ? {
+          grossRevenuePriorYear2MinorUnits:
+            row.gross_revenue_prior_year_2_minor_units as number,
+        }
+      : {}),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -179,8 +200,11 @@ export class EntityStore {
            fiscal_year_end, registered_on, gross_revenue_minor_units,
            total_assets_minor_units, employee_count,
            solicits_charitable_contributions, is_private_foundation,
+           is_supporting_organization,
+           gross_revenue_prior_year_1_minor_units,
+           gross_revenue_prior_year_2_minor_units,
            created_at, updated_at
-         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       )
       .run(
         id,
@@ -204,6 +228,13 @@ export class EntityStore {
           : facts.isPrivateFoundation
             ? 1
             : 0,
+        facts.isSupportingOrganization === undefined
+          ? null
+          : facts.isSupportingOrganization
+            ? 1
+            : 0,
+        facts.grossRevenuePriorYear1MinorUnits ?? null,
+        facts.grossRevenuePriorYear2MinorUnits ?? null,
         timestamp,
         timestamp,
       );
@@ -239,6 +270,9 @@ export class EntityStore {
            gross_revenue_minor_units = ?, total_assets_minor_units = ?,
            employee_count = ?, solicits_charitable_contributions = ?,
            is_private_foundation = ?,
+           is_supporting_organization = ?,
+           gross_revenue_prior_year_1_minor_units = ?,
+           gross_revenue_prior_year_2_minor_units = ?,
            updated_at = ?
          WHERE id = ?`,
       )
@@ -263,6 +297,13 @@ export class EntityStore {
           : facts.isPrivateFoundation
             ? 1
             : 0,
+        facts.isSupportingOrganization === undefined
+          ? null
+          : facts.isSupportingOrganization
+            ? 1
+            : 0,
+        facts.grossRevenuePriorYear1MinorUnits ?? null,
+        facts.grossRevenuePriorYear2MinorUnits ?? null,
         this.now(),
         id,
       );

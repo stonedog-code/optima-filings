@@ -5,6 +5,10 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import {
+  AUTOMATIC_REVOCATION,
+  isAnnualExemptOrganizationReturn,
+} from "@optima-compliance/engine";
 import type { EvaluationResult, Obligation } from "@optima-compliance/engine";
 
 /**
@@ -22,6 +26,34 @@ export const DISCLAIMER = [
   "This is not legal or tax advice. Deadlines and fees change, and your",
   "circumstances may be unusual. Every line above cites its source — check",
   "anything that matters. You remain responsible for your own filings.",
+].join("\n");
+
+/**
+ * The consequence that is not a late fee.
+ *
+ * 26 U.S.C. 6033(j): an annual return or e-Postcard unfiled for three
+ * consecutive years revokes exempt status automatically, on the due date of the
+ * third. The rule pack has said so in a `notes` field since the first federal
+ * rule was written, and no user of this tool has ever seen it — a printed row
+ * for Form 990-N looked exactly like a printed row for a state annual report.
+ *
+ * It states the rule and says nothing about the reader. Nothing here records
+ * what anybody filed in a prior year, so implying a customer has missed
+ * anything would be a claim on evidence this tool does not have.
+ *
+ * Printed only when the run actually contains one of those returns, including
+ * an undecided one — an organisation that has not answered the foundation or
+ * supporting-organisation question still owes one of them.
+ *
+ * Omitted from `--json` for the same reason `DISCLAIMER` is: that output feeds
+ * a program, and the duty to inform a human belongs to whatever renders it.
+ */
+export const REVOCATION_NOTICE = [
+  `  An annual return or e-Postcard — Form 990, 990-EZ, 990-N or 990-PF —`,
+  `  unfiled for ${AUTOMATIC_REVOCATION.consecutiveYears} CONSECUTIVE YEARS revokes tax-exempt status`,
+  "  automatically, on the due date of the third. Getting it back means a new",
+  "  exemption application and a user fee. This is the rule, not a statement",
+  `  about your filings — nothing here knows what you have filed. ${AUTOMATIC_REVOCATION.citation}.`,
 ].join("\n");
 
 export function formatMoney(minorUnits: number, currency = "USD"): string {
@@ -106,6 +138,16 @@ export function renderResult(
         `    ${rule.jurisdiction}  ${rule.title}  (needs: ${rule.missingFacts.join(", ")})`,
       );
     }
+  }
+
+  // The DATA, not a flag and not an unconditional footer. See
+  // REVOCATION_NOTICE: an undecided rule counts, because the organisation still
+  // owes one of these returns even though we cannot yet say which.
+  const touchesAnnualReturn =
+    obligations.some((o) => isAnnualExemptOrganizationReturn(o.ruleId)) ||
+    indeterminate.some((r) => isAnnualExemptOrganizationReturn(r.ruleId));
+  if (touchesAnnualReturn) {
+    lines.push("", REVOCATION_NOTICE);
   }
 
   const drafts = obligations.filter((o) => o.status === "draft").length;

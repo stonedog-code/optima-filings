@@ -12,6 +12,11 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
+import {
+  ANNUAL_EXEMPT_ORGANIZATION_RETURNS,
+  AUTOMATIC_REVOCATION,
+  isAnnualExemptOrganizationReturn,
+} from "../src/annualReturn.js";
 import { evaluate } from "../src/evaluate.js";
 import { CONDITIONABLE_FACTS } from "../src/facts.js";
 import type { EntityFacts } from "../src/facts.js";
@@ -21,8 +26,14 @@ import type { Rule } from "../src/rule.js";
 // the next fixture would be missing from.
 import * as fixtures from "./fixtures/entities.js";
 import {
+  BEQUEST_YEAR_CHARITY,
   DE_CORP,
   ENDOWED_NON_SOLICITING_CHARITY,
+  EXACTLY_AT_THE_AVERAGE_LINE_CHARITY,
+  LEAN_YEAR_AFTER_LARGE_YEARS_CHARITY,
+  ONE_CENT_OVER_THE_AVERAGE_LINE_CHARITY,
+  SUPPORTING_ORGANIZATION,
+  SUPPORTING_ORGANIZATION_QUESTION_UNANSWERED,
   JUNE_YEAR_END_SOLICITING_CHARITY,
   OR_CORP_LEAP_DAY,
   OR_LLC,
@@ -312,24 +323,40 @@ describe("an endowed Washington charity that does not solicit", () => {
     expect(result.obligations.length).toBeGreaterThan(0);
   });
 
-  it("owes exactly ONE of the 990 family, not both", () => {
-    // THE REGRESSION (NEH-410). This entity is low on receipts ($30k) and high
-    // on assets ($9M), and it fired BOTH `us-federal-form-990-n` and
-    // `us-federal-form-990`. Those are alternatives — an organisation files one
-    // annual return — and being told to file two is the kind of wrong that
-    // makes a customer distrust the rest of the calendar.
+  it("owes exactly ONE of the 990 family, and it is the e-Postcard", () => {
+    // THE REGRESSION (NEH-410) — low on receipts ($30k), high on assets ($9M),
+    // and it once fired BOTH `us-federal-form-990-n` and `us-federal-form-990`.
+    // An organisation files one annual return; being told to file two is the
+    // kind of wrong that makes a customer distrust the rest of the calendar.
     //
-    // Neither condition was individually unfaithful: 990-N's row states a
-    // gross-receipts test with no assets ceiling, and 990's row states an
-    // assets test with no receipts floor. The published thresholds table simply
-    // does not resolve an entity low on one axis and high on the other.
+    // THIS ASSERTION WAS INVERTED ON 2026-09-03, AND THE INVERSION IS THE
+    // POINT. It used to expect `us-federal-form-990`, because the first fix
+    // gave 990-N an assets ceiling — a threshold that rule's own notes recorded
+    // as this pack's invention, with `lastVerified` deliberately not bumped
+    // pending a reading of the primary sources. That reading has now happened
+    // and the ceiling has no basis:
     //
-    // The fix gives 990-N an assets ceiling, exactly as form-990-ez.json
-    // already carries one, and toward the FULLER return — under-filing is the
-    // worse direction for a compliance product to be wrong in.
+    //   Rev. Proc. 2011-15 sec. 3.01 conditions the relief from filing an
+    //   annual return on gross receipts and on the organisation not being a
+    //   private foundation or a supporting organisation, and on NOTHING else.
+    //   Sec. 3.04 revives the duty to file only "if at any time an organization
+    //   ceases to meet ANY CONDITION set forth in section 3.01" — and total
+    //   assets are not among those conditions. The $500,000 assets figure in
+    //   the Instructions for Form 990 decides WHICH return an organisation
+    //   already required to file must use, not WHETHER it is required to file.
+    //
+    // So the overlap resolves the other way: this organisation is relieved and
+    // submits the e-Postcard. The one-return invariant is preserved not by
+    // capping 990-N but by giving 990 and 990-EZ the receipts floor the revenue
+    // procedure actually creates.
+    //
+    // Written down here rather than only in a commit message because a future
+    // reader finding this expectation reversed needs to know it was reversed on
+    // purpose, or they will restore the invented ceiling.
     const owed = result.obligations.map((o) => o.ruleId);
-    expect(owed).toContain("us-federal-form-990");
-    expect(owed).not.toContain("us-federal-form-990-n");
+    expect(owed).toContain("us-federal-form-990-n");
+    expect(owed).not.toContain("us-federal-form-990");
+    expect(owed).not.toContain("us-federal-form-990-ez");
   });
 
   it("owes the TRUST registration, not the solicitation one", () => {
@@ -1178,5 +1205,274 @@ describe("federal holidays applied to the shipped rules", () => {
         expect(rule.holidayCalendar).toBeUndefined();
       }
     }
+  });
+});
+
+/**
+ * A 509(a)(3) supporting organisation is never told to file Form 990-N.
+ *
+ * The second of the two carve-outs the IRS prints on the notice that prompts
+ * the filing, and the one the private-foundation fix deliberately left open.
+ *
+ * **Authority, because a rule without one is an assertion.** Rev. Proc. 2011-15
+ * sec. 3.01 relieves from the annual-return requirement an organisation
+ * described in sec. 501(c) "(other than a private foundation or a § 509(a)(3)
+ * supporting organization)" whose gross receipts are normally not more than
+ * $50,000; sec. 3.03 makes Form 990-N the notice a relieved organisation files
+ * instead. A supporting organisation is outside that relief at any size. The
+ * exclusion is statutory in origin: sec. 2.04 records that the Pension
+ * Protection Act of 2006 amended 26 U.S.C. 6033(a)(3)(B) to remove the
+ * Secretary's authority to relieve supporting organisations at all.
+ */
+describe("a 509(a)(3) supporting organisation", () => {
+  const asOf = "2026-09-03";
+
+  function federalOf(facts: EntityFacts) {
+    const result = evaluate(facts, RULES, { asOf, horizonMonths: 12 });
+    return {
+      obligations: result.obligations.filter((o) => o.jurisdiction === "US"),
+      indeterminate: result.indeterminate.filter((r) => r.jurisdiction === "US"),
+    };
+  }
+
+  it("is not given the e-Postcard, however small it is", () => {
+    const { obligations } = federalOf(SUPPORTING_ORGANIZATION);
+    expect(obligations.map((o) => o.ruleId)).not.toContain("us-federal-form-990-n");
+  });
+
+  it("owes the 990-EZ instead, rather than being dropped", () => {
+    // The half a narrower fix would have got wrong. Excluding a supporting
+    // organisation from 990-N without giving 990-EZ a branch for it leaves this
+    // entity below that rule's receipts floor and matching NOTHING — silence,
+    // which is under-filing wearing a clean calendar and strictly worse than
+    // naming the wrong form, because nothing on the screen invites a second
+    // look. Exclusivity alone cannot catch it: zero rules firing satisfies "at
+    // most one" perfectly.
+    const { obligations } = federalOf(SUPPORTING_ORGANIZATION);
+    expect(obligations.map((o) => o.ruleId)).toEqual(["us-federal-form-990-ez"]);
+  });
+
+  it("owes it on the same date the wrong return used to claim", () => {
+    // 31 Dec year end + 5 months = 15 May 2027, a Saturday, rolled forward to
+    // Monday the 17th. Pinned to isolate what changed: the FORM was wrong, the
+    // arithmetic was not, and a fix that also moved the date would be a second
+    // defect hiding inside the first.
+    const { obligations } = federalOf(SUPPORTING_ORGANIZATION);
+    expect(obligations[0]?.dueOn).toBe("2027-05-17");
+  });
+
+  it("does not push an ordinary small charity off the e-Postcard", () => {
+    // The other direction. A condition that excluded everybody would pass every
+    // assertion above while telling every small nonprofit in the country to
+    // file a 990-EZ.
+    const { obligations } = federalOf(WA_SMALL_CHARITY);
+    expect(obligations.map((o) => o.ruleId)).toEqual(["us-federal-form-990-n"]);
+  });
+});
+
+/**
+ * An unanswered supporting-organisation question is reported, not guessed.
+ *
+ * The same discipline the foundation question is under, and for the same
+ * reason: `false` is the tempting default and it is the under-filing direction,
+ * silently re-deciding the 990 family for every entity created before the
+ * question existed — which is every entity in every install today.
+ */
+describe("a 501(c)(3) nobody has asked about supporting-organisation status", () => {
+  const result = evaluate(SUPPORTING_ORGANIZATION_QUESTION_UNANSWERED, RULES, {
+    asOf: "2026-09-03",
+    horizonMonths: 12,
+  });
+
+  it("is given no federal deadline at all", () => {
+    expect(result.obligations.filter((o) => o.jurisdiction === "US")).toEqual([]);
+  });
+
+  it("reports the returns it CANNOT rule out as indeterminate", () => {
+    const undecided = result.indeterminate.map((r) => r.ruleId);
+    expect(undecided).toContain("us-federal-form-990-n");
+    expect(undecided).toContain("us-federal-form-990-ez");
+  });
+
+  it("does NOT ask the question where the answer cannot change the outcome", () => {
+    // Written expecting `us-federal-form-990` here too, and the engine was
+    // right and the expectation was wrong. This fixture has $18,000 of receipts
+    // and $90,000 of assets, so Form 990's receipts-or-assets test is a known
+    // FALSE — and the evaluator short-circuits a known-false entry ahead of any
+    // unknown, deliberately. Whether this organisation is a supporting
+    // organisation cannot make it owe the full Form 990, so demanding the
+    // answer first would be asking for data to settle a settled question.
+    //
+    // Pinned rather than deleted, because "the family is indeterminate" is the
+    // intuitive assertion and the next reader will reach for it too.
+    expect(result.indeterminate.map((r) => r.ruleId)).not.toContain(
+      "us-federal-form-990",
+    );
+  });
+
+  it("names the fact that would decide it", () => {
+    for (const rule of result.indeterminate.filter(
+      (r) => r.jurisdiction === "US" && r.ruleId !== "us-federal-form-990-pf",
+    )) {
+      expect(rule.missingFacts).toContain("isSupportingOrganization");
+    }
+  });
+
+  it("answers the question the moment it is told", () => {
+    // The pair to the assertion above, and what stops "indeterminate" becoming
+    // a place rules go to die.
+    const answered = evaluate(
+      { ...SUPPORTING_ORGANIZATION_QUESTION_UNANSWERED, isSupportingOrganization: true },
+      RULES,
+      { asOf: "2026-09-03", horizonMonths: 12 },
+    );
+    expect(
+      answered.obligations.filter((o) => o.jurisdiction === "US").map((o) => o.ruleId),
+    ).toEqual(["us-federal-form-990-ez"]);
+  });
+});
+
+/**
+ * "Normally" is an average, and the pack now evaluates it as one.
+ *
+ * Rev. Proc. 2011-15 sec. 4(3): an organisation in existence three years or
+ * more has annual gross receipts normally not more than $50,000 if "the
+ * organization's average annual gross receipts for the immediately preceding
+ * three taxable years, including the taxable year for which the return is
+ * filed, is $50,000 or less".
+ *
+ * Every expected form below follows from arithmetic stated in the fixture's own
+ * comment, not from running the engine.
+ */
+describe("the three-year gross receipts average", () => {
+  const asOf = "2026-09-03";
+
+  function federalReturns(facts: EntityFacts): string[] {
+    return evaluate(facts, RULES, { asOf, horizonMonths: 12 })
+      .obligations.filter((o) => o.jurisdiction === "US")
+      .map((o) => o.ruleId);
+  }
+
+  it("keeps a charity on the e-Postcard through a one-off legacy year", () => {
+    // $60,000 + $30,000 + $30,000 = $120,000; average $40,000, under the line.
+    // A single-year test reads $60,000 and sends it to the 990-EZ.
+    expect(federalReturns(BEQUEST_YEAR_CHARITY)).toEqual(["us-federal-form-990-n"]);
+  });
+
+  it("keeps a charity OFF the e-Postcard after two large years", () => {
+    // $20,000 + $200,000 + $200,000 = $420,000; average $140,000, far over.
+    //
+    // THE ASSERTION THAT MATTERS. A single-year test reads $20,000 and names
+    // Form 990-N — a return this organisation is not eligible to file. That is
+    // UNDER-filing, which the ticket reporting the single-year test did not
+    // account for: it called the error direction conservative, and it is
+    // conservative only in the half it had looked at.
+    expect(federalReturns(LEAN_YEAR_AFTER_LARGE_YEARS_CHARITY)).toEqual([
+      "us-federal-form-990-ez",
+    ]);
+  });
+
+  it("treats an average of exactly $50,000 as inside the line", () => {
+    // "is $50,000 or less" — `lte`, not `lt`. The three years are unequal so
+    // this cannot pass against an engine that ignores the prior years.
+    expect(federalReturns(EXACTLY_AT_THE_AVERAGE_LINE_CHARITY)).toEqual([
+      "us-federal-form-990-n",
+    ]);
+  });
+
+  it("treats one cent over as outside it", () => {
+    // The pair to the assertion above, and the reason the average rounds up.
+    expect(federalReturns(ONE_CENT_OVER_THE_AVERAGE_LINE_CHARITY)).toEqual([
+      "us-federal-form-990-ez",
+    ]);
+  });
+
+  it("still answers for an organisation that supplied only one year", () => {
+    // A new organisation has no prior years and never will. Refusing to decide
+    // would leave it permanently indeterminate, which is the one outcome worse
+    // than the approximation — and the approximation is exactly what this pack
+    // did for every entity before the prior-year facts existed.
+    expect(federalReturns(WA_SMALL_CHARITY)).toEqual(["us-federal-form-990-n"]);
+  });
+});
+
+/**
+ * The 990-N assets ceiling is gone, and nothing may quietly restore it.
+ *
+ * A guard rather than a fixture assertion, because the failure it protects
+ * against is a plausible-looking edit: the ceiling was added in good faith to
+ * resolve a real overlap, its own notes said it had no IRS basis, and the
+ * obvious way to fix any future overlap is to put it back.
+ */
+describe("Form 990-N eligibility is receipts-only", () => {
+  it("tests no assets figure at all", () => {
+    // Rev. Proc. 2011-15 sec. 3.01 names gross receipts, private-foundation
+    // status and supporting-organisation status, and nothing else; sec. 3.04
+    // makes those the only conditions whose loss revives the duty to file. The
+    // IRS page listing the organisations not permitted to file Form 990-N names
+    // no assets test either.
+    const facts = byId("us-federal-form-990-n").conditions?.flatMap((node) =>
+      "anyOf" in node ? node.anyOf.map((c) => c.fact) : [node.fact],
+    );
+    expect(facts).not.toContain("totalAssetsMinorUnits");
+    expect(facts).not.toContain("charitableAssetsMinorUnits");
+    // Non-vacuity: an empty condition list would satisfy both assertions above
+    // while meaning the rule fires for every 501(c)(3) in existence.
+    expect(facts?.length).toBeGreaterThan(2);
+  });
+
+  it("gives a high-asset, low-receipts charity the e-Postcard and nothing else", () => {
+    // $20,000 of receipts against $9,000,000 of assets — the shape the removed
+    // ceiling was invented for. It must produce exactly one return, and under
+    // the revenue procedure that return is the e-Postcard.
+    const owed = evaluate(
+      {
+        ...WA_SMALL_CHARITY,
+        grossRevenueMinorUnits: 2_000_000,
+        totalAssetsMinorUnits: 900_000_000,
+      },
+      RULES,
+      { asOf: "2026-09-03", horizonMonths: 12 },
+    ).obligations
+      .filter((o) => o.jurisdiction === "US")
+      .map((o) => o.ruleId);
+    expect(owed).toEqual(["us-federal-form-990-n"]);
+  });
+});
+
+/**
+ * The automatic-revocation warning knows which rules it is about.
+ *
+ * The list lives in the engine so both tiers warn about the same rules, which
+ * makes it exactly the kind of hand-maintained set that goes stale silently: a
+ * new annual return would simply never trigger the warning, and nothing would
+ * fail. Asserted in BOTH directions against what the pack actually ships.
+ */
+describe("the annual exempt-organisation returns", () => {
+  it("names every 6033 annual return the pack ships, and only those", () => {
+    const shipped = RULES.filter(
+      (rule) => rule.jurisdiction === "US" && /^990(-|$)/.test(rule.form ?? ""),
+    ).map((rule) => rule.id);
+    expect([...ANNUAL_EXEMPT_ORGANIZATION_RETURNS].sort()).toEqual(shipped.sort());
+    // Non-vacuity. Two empty arrays are equal, and would read as a clean run.
+    expect(shipped.length).toBe(4);
+  });
+
+  it("recognises each of them and nothing else", () => {
+    for (const id of ANNUAL_EXEMPT_ORGANIZATION_RETURNS) {
+      expect(isAnnualExemptOrganizationReturn(id)).toBe(true);
+    }
+    expect(isAnnualExemptOrganizationReturn("us-wa-nonprofit-annual-report")).toBe(
+      false,
+    );
+  });
+
+  it("cites the statute that makes it true", () => {
+    // 26 U.S.C. 6033(j)(1): revoked "on and after the date set by the Secretary
+    // for the filing of the third annual return or notice". Three, not two and
+    // not five, and a surface that said otherwise would be a compliance claim
+    // nobody could check.
+    expect(AUTOMATIC_REVOCATION.consecutiveYears).toBe(3);
+    expect(AUTOMATIC_REVOCATION.citation).toContain("6033(j)");
   });
 });
