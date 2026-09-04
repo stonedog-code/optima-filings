@@ -186,6 +186,7 @@ export class EntityStore {
         this.db.exec("ROLLBACK");
         throw new Error(
           `Migration ${migration.id} (${migration.name}) failed: ${(error as Error).message}`,
+          { cause: error },
         );
       }
     }

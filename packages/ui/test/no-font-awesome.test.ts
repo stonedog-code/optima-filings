@@ -88,7 +88,7 @@ describe("no Font Awesome in a public, redistributed repo", () => {
     // guards against. It is acceptable here only because the emptiness is the
     // subject: "there are no submodules" is the assertion, and the `.gitmodules`
     // read is how it is measured.
-    let gitmodules = "";
+    let gitmodules: string;
     try {
       gitmodules = readFileSync(join(REPO_ROOT, ".gitmodules"), "utf8");
     } catch {
