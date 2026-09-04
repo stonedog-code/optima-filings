@@ -146,7 +146,6 @@ describe("Panda include globs resolve to real files (NEH-482)", () => {
     // `83 files over 2 globs` are the same green, and only the count says the
     // set changed — a package that quietly stops shipping half its components
     // still passes `> 0`.
-    // eslint-disable-next-line no-console
     console.log(
       `${pkg}: ${total} file(s) across ${globs.length} glob(s) [` +
         perGlob.map((p) => `${p.glob} -> ${p.files}`).join(", ") +

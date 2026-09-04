@@ -22,7 +22,7 @@
  *
  * A count that stops moving when you add a file is the tell.
  */
-import { spawn, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join, relative, resolve } from "node:path";
 import { readFileSync } from "node:fs";
