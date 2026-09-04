@@ -40,6 +40,16 @@
 # does not contain what it should.
 set -euo pipefail
 
+# The npm registry is eventually consistent: a version that was just published
+# can 404 for anything from seconds to minutes. Both registry probes in this
+# script wait out that window, and they share these constants so they cannot
+# drift apart -- they are the SAME delay observed from opposite sides. The
+# post-publish check (step 8) is waiting for a publish this run performed; the
+# engine-pin precondition below is waiting for one an earlier run performed.
+# NEH-1421 is what happens when only one of them retries.
+REGISTRY_PROBE_ATTEMPTS=20
+REGISTRY_PROBE_SLEEP=3
+
 PACKAGE_KIND="${1:-}"
 case "$PACKAGE_KIND" in
   engine)
@@ -138,9 +148,25 @@ fi
 case "$PACKAGE_KIND" in
   rules|export)
     ENGINE_PIN="$(node -p "require('./$PACKAGE_DIR/package.json').dependencies['@optima-compliance/engine']")"
-    npm view "@optima-compliance/engine@$ENGINE_PIN" version >/dev/null 2>&1 \
-      || fail "$PACKAGE_KIND depends on @optima-compliance/engine@$ENGINE_PIN, which is not on the registry. Publish the engine first: npm run publish:engine"
-    echo "  engine@$ENGINE_PIN is on the registry"
+    ENGINE_PROBE_URL="https://registry.npmjs.org/@optima-compliance/engine/$ENGINE_PIN"
+
+    # Retry, for the same reason step 8 does. A single miss here is a cache miss
+    # at one instant, not a fact about the registry -- and saying "not on the
+    # registry" asserts more than the probe can know. That wording sent a
+    # session down the wrong path on 2026-09-03: it reported a good publish as
+    # failed, and confirmed the "failure" with `npm view <pkg> version`, which
+    # lags the same way. The message below says what was OBSERVED and keeps the
+    # operator on the right branch, and prints the per-version URL so it can be
+    # checked against the authoritative endpoint rather than against npm view.
+    for attempt in $(seq 1 "$REGISTRY_PROBE_ATTEMPTS"); do
+      if npm view "@optima-compliance/engine@$ENGINE_PIN" version >/dev/null 2>&1; then break; fi
+      [ "$attempt" -lt "$REGISTRY_PROBE_ATTEMPTS" ] || fail "could not resolve @optima-compliance/engine@$ENGINE_PIN after $REGISTRY_PROBE_ATTEMPTS attempts over ~$((REGISTRY_PROBE_ATTEMPTS * REGISTRY_PROBE_SLEEP))s.
+  probed: $ENGINE_PROBE_URL
+If the engine was JUST published, the registry may still be propagating -- wait a minute and re-run this command.
+If it was never published, run: npm run publish:engine"
+      sleep "$REGISTRY_PROBE_SLEEP"
+    done
+    echo "  engine@$ENGINE_PIN resolved on the registry"
 
     # And that the pin is the engine this repo actually builds against. A pin
     # that resolves on the registry can still be an OLD engine: pair the current
@@ -257,10 +283,10 @@ say "Verifying it is actually installable"
 PROBE_DIR="$(mktemp -d)"
 trap 'rm -rf "$PROBE_DIR"' EXIT
 
-for attempt in $(seq 1 20); do
+for attempt in $(seq 1 "$REGISTRY_PROBE_ATTEMPTS"); do
   if npm view "$PACKAGE_NAME@$VERSION" version >/dev/null 2>&1; then break; fi
-  [ "$attempt" -lt 20 ] || fail "$PACKAGE_NAME@$VERSION is still not on the registry after publishing. The publish did NOT succeed, whatever it printed."
-  sleep 3
+  [ "$attempt" -lt "$REGISTRY_PROBE_ATTEMPTS" ] || fail "$PACKAGE_NAME@$VERSION is still not on the registry after publishing. The publish did NOT succeed, whatever it printed."
+  sleep "$REGISTRY_PROBE_SLEEP"
 done
 
 printf '{"name":"probe","version":"1.0.0"}' > "$PROBE_DIR/package.json"
