@@ -28,6 +28,7 @@ interface EntityRow {
   registered_on: string | null;
   gross_revenue_minor_units: number | null;
   total_assets_minor_units: number | null;
+  charitable_assets_minor_units: number | null;
   employee_count: number | null;
   solicits_charitable_contributions: number | null;
   is_private_foundation: number | null;
@@ -67,6 +68,18 @@ function toFacts(row: EntityRow): StoredEntity {
       : {}),
     ...("v" in optional(row.total_assets_minor_units)
       ? { totalAssetsMinorUnits: row.total_assets_minor_units as number }
+      : {}),
+    // A DISTINCT figure from the line above, never a copy of it. The fact was
+    // split out of `totalAssetsMinorUnits` so that an organisation holding
+    // substantial non-charitable assets is not over-triggered into charity
+    // registration, and collapsing the two here would undo the split at the
+    // layer furthest from anyone who would notice.
+    //
+    // NULL becomes an ABSENT KEY, and 0 stays 0. An organisation really can
+    // hold no charitable assets; that is a different fact from not having been
+    // asked, and only one of them is an answer.
+    ...("v" in optional(row.charitable_assets_minor_units)
+      ? { charitableAssetsMinorUnits: row.charitable_assets_minor_units as number }
       : {}),
     ...("v" in optional(row.employee_count)
       ? { employeeCount: row.employee_count as number }
@@ -199,13 +212,14 @@ export class EntityStore {
         `INSERT INTO entities (
            id, name, entity_types, formed_on, home_jurisdiction, jurisdictions,
            fiscal_year_end, registered_on, gross_revenue_minor_units,
-           total_assets_minor_units, employee_count,
+           total_assets_minor_units, charitable_assets_minor_units,
+           employee_count,
            solicits_charitable_contributions, is_private_foundation,
            is_supporting_organization,
            gross_revenue_prior_year_1_minor_units,
            gross_revenue_prior_year_2_minor_units,
            created_at, updated_at
-         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       )
       .run(
         id,
@@ -218,6 +232,9 @@ export class EntityStore {
         facts.registeredOn ? JSON.stringify(facts.registeredOn) : null,
         facts.grossRevenueMinorUnits ?? null,
         facts.totalAssetsMinorUnits ?? null,
+        // `?? null`, never `|| null`: a genuine 0 is a real answer here and
+        // `||` would rewrite it as "nobody has been asked".
+        facts.charitableAssetsMinorUnits ?? null,
         facts.employeeCount ?? null,
         facts.solicitsCharitableContributions === undefined
           ? null
@@ -269,6 +286,7 @@ export class EntityStore {
            name = ?, entity_types = ?, formed_on = ?, home_jurisdiction = ?,
            jurisdictions = ?, fiscal_year_end = ?, registered_on = ?,
            gross_revenue_minor_units = ?, total_assets_minor_units = ?,
+           charitable_assets_minor_units = ?,
            employee_count = ?, solicits_charitable_contributions = ?,
            is_private_foundation = ?,
            is_supporting_organization = ?,
@@ -287,6 +305,10 @@ export class EntityStore {
         facts.registeredOn ? JSON.stringify(facts.registeredOn) : null,
         facts.grossRevenueMinorUnits ?? null,
         facts.totalAssetsMinorUnits ?? null,
+        // Present here as well as in `create()`, and that pairing is the whole
+        // bug: an UPDATE that silently omits a column leaves the previous value
+        // in place, so taking an answer back would not take.
+        facts.charitableAssetsMinorUnits ?? null,
         facts.employeeCount ?? null,
         facts.solicitsCharitableContributions === undefined
           ? null

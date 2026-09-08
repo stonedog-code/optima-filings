@@ -245,4 +245,38 @@ export const MIGRATIONS: readonly { id: number; name: string; sql: string }[] = 
       ALTER TABLE entities ADD COLUMN gross_revenue_prior_year_2_minor_units INTEGER;
     `,
   },
+  {
+    id: 7,
+    name: "charitable_assets",
+    sql: `
+      -- The portion of an organisation's assets held for charitable purposes.
+      --
+      -- A SEPARATE column from total_assets_minor_units, and the separation is
+      -- the whole point: an organisation may hold substantial non-charitable
+      -- assets, and testing a charity-registration threshold against the total
+      -- over-triggers it into a registration the statute does not ask for.
+      -- \`EntityFacts\` has drawn that distinction since the fact was split out;
+      -- storage had not, so every figure a self-hoster typed was accepted and
+      -- discarded. Nothing failed - \`create()\` re-reads the row it wrote, so
+      -- the value it returns looks right - and the field then read back blank
+      -- on the edit screen, which looks like a failed save rather than a lost
+      -- fact.
+      --
+      -- The visible cost is us-wa-charitable-trust-registration, the one rule
+      -- that conditions on this fact: it could never be decided for a
+      -- self-hoster, however carefully the form was filled in, and asked
+      -- forever for a figure already given. WAC 434-120-305 requires a trustee
+      -- to register where they hold assets "invested for income-producing
+      -- purposes, exceeding a value of two hundred fifty thousand dollars".
+      --
+      -- NULLABLE, AND NULL IS THE POINT, for the third time in three
+      -- migrations. A NOT NULL DEFAULT 0 would claim every organisation already
+      -- in every self-hoster's database holds no charitable assets - a firm
+      -- "below the line" rather than an honest "nobody has been asked", on a
+      -- registration Washington does enforce. The engine reads an absent fact
+      -- as indeterminate and attaches the question; it reads a zero as an
+      -- answer.
+      ALTER TABLE entities ADD COLUMN charitable_assets_minor_units INTEGER;
+    `,
+  },
 ];
