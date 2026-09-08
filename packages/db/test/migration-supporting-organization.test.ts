@@ -121,10 +121,21 @@ describe("migration 6, on a database that already has entities", () => {
     // "Append only" is the rule a shipped migration lives under: a self-hoster
     // has already run the earlier ones, so an edit changes what new installs
     // get without changing existing ones and the two diverge silently.
+    // `Math.max(...ids) === NEW_MIGRATION_ID` stood here and was replaced when
+    // migration 7 landed. It asserted "6 is the newest migration", which is not
+    // the property this test is about and which every later migration falsifies
+    // - a red that says "you appended a migration" rather than "you broke
+    // something". Do not restore it.
     const ids = MIGRATIONS.map((m) => m.id);
     expect(ids).toEqual([...ids].sort((a, b) => a - b));
     expect(new Set(ids).size).toBe(ids.length);
-    expect(Math.max(...ids)).toBe(NEW_MIGRATION_ID);
+    expect(ids).toContain(NEW_MIGRATION_ID);
+    // Every migration BEFORE this one is still before it. That is the append-
+    // only property, and unlike "this is the newest migration" it stays true
+    // when the next one lands.
+    expect(ids.filter((id) => id < NEW_MIGRATION_ID)).toEqual(
+      ids.slice(0, ids.indexOf(NEW_MIGRATION_ID)),
+    );
   });
 
   it("applies cleanly and records itself", () => {
