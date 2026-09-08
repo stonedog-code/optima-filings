@@ -56,6 +56,41 @@ export const REVOCATION_NOTICE = [
   `  about your filings — nothing here knows what you have filed. ${AUTOMATIC_REVOCATION.citation}.`,
 ].join("\n");
 
+/**
+ * What a `--format csv` or `--format ics` file from this command contains.
+ *
+ * ## Not a bug being papered over — a scope being stated
+ *
+ * The self-host dashboard holds two kinds of dated item: obligations the engine
+ * DERIVED from a cited statute, and actions a person WROTE DOWN themselves. Its
+ * export route carries both. This command carries only the first, because it
+ * has nowhere to read the second from: its entire input is a facts file,
+ * `evaluate` is pure, and opening a database would change what the command
+ * requires in order to run at all.
+ *
+ * The join is missing as well as the dependency. A stored action points at a
+ * STORED entity by id; an entity read out of a JSON file has no id. So handing
+ * this command a database would mean printing every action in it beside one
+ * file's obligations — a different command from `check --entity`, not a wider
+ * version of this one.
+ *
+ * ## Why it is printed rather than merely documented
+ *
+ * A file that quietly covers half of somebody's calendar is the problem
+ * whether the missing half was dropped or was never in scope, and the person
+ * exporting it cannot tell the difference from the file. So the scope is said
+ * out loud: here on stderr during the run, and in `--help` before it.
+ *
+ * On STDERR, deliberately. stdout is what gets piped into a spreadsheet, and a
+ * caveat that lands in the data is not a caveat.
+ */
+export const EXPORT_SCOPE_NOTE = [
+  "Note: this export lists the deadlines worked out from the rule pack for the",
+  "facts in your entity file. Deadlines you added yourself are kept by the",
+  "dashboard, which this command does not read — so a csv or calendar file from",
+  "here is not your whole calendar.",
+].join(" ");
+
 export function formatMoney(minorUnits: number, currency = "USD"): string {
   // Integer arithmetic to the last step. Dividing by 100 early would introduce
   // exactly the float error the minor-units convention exists to prevent.

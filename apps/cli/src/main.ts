@@ -11,7 +11,7 @@ import { evaluate, type EntityFacts } from "@optima-compliance/engine";
 import { ALL_RULES } from "@optima-compliance/rules";
 import { toCsv, toICalendar } from "@optima-compliance/export";
 import { parseArgs, USAGE } from "./args.js";
-import { renderResult } from "./format.js";
+import { EXPORT_SCOPE_NOTE, renderResult } from "./format.js";
 
 const VERSION = "0.1.0";
 
@@ -120,14 +120,29 @@ switch (parsed.kind) {
         break;
     }
 
-    // Indeterminate rules never reach a calendar or a spreadsheet — there is no
-    // date to put them on. Saying so on stderr keeps stdout clean for piping
-    // while still telling the user their export is not the whole picture.
-    if (format !== "text" && format !== "json" && result.indeterminate.length > 0) {
-      process.stderr.write(
-        `Note: ${result.indeterminate.length} rule(s) could not be decided and are not in this export. ` +
-          `Run without --format to see what facts are missing.\n`,
-      );
+    // Two things are absent from a calendar or a spreadsheet, and only one of
+    // them was ever mentioned.
+    //
+    // Both go to stderr, and that is what makes them safe to print
+    // unconditionally: stdout stays clean for the pipe into a spreadsheet, and
+    // a caveat that landed in the data would not be a caveat.
+    if (format === "ics" || format === "csv") {
+      // An indeterminate rule has no date to put on a row. This one is
+      // conditional because it is a fact about THIS run.
+      if (result.indeterminate.length > 0) {
+        process.stderr.write(
+          `Note: ${result.indeterminate.length} rule(s) could not be decided and are not in this export. ` +
+            `Run without --format to see what facts are missing.\n`,
+        );
+      }
+
+      // A deadline the user wrote down themselves is absent for a different
+      // reason: this command has no store to read one from. That is a property
+      // of the command rather than of the run, so it is stated every time —
+      // see EXPORT_SCOPE_NOTE for why the scope is what it is. Somebody who
+      // also uses the dashboard would otherwise take this file for their whole
+      // calendar, and nothing in it would say otherwise.
+      process.stderr.write(`${EXPORT_SCOPE_NOTE}\n`);
     }
     break;
   }
