@@ -42,6 +42,9 @@ OPTIONS
                       Calendar, Outlook, or Apple Calendar. csv opens in a
                       spreadsheet. Both omit the disclaimer as prose, so it
                       travels inside the events and the caller inherits it.
+                      Both cover the deadlines worked out from the rule pack
+                      only. Deadlines you added yourself are kept by the
+                      dashboard, which this command does not read.
   --json              Shorthand for --format json.
   --remind <days>     Comma-separated lead times for calendar alarms, e.g.
                       30,7. Applies to --format ics only. A deadline you hear
