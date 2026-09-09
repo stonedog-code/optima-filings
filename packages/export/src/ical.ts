@@ -10,6 +10,7 @@
  * impossible to diff, cache, or assert on in a test.
  */
 
+import { feeAmountText, feeExplanation } from "@optima-compliance/engine";
 import type { Obligation } from "@optima-compliance/engine";
 
 import { isCalendarAction, type CalendarAction } from "./action.js";
@@ -135,9 +136,17 @@ function describe(obligation: Obligation): string {
   const lines = [
     `${obligation.agency}`,
     obligation.form ? `Form: ${obligation.form}` : undefined,
-    obligation.feeMinorUnits !== undefined
-      ? `Fee: $${(obligation.feeMinorUnits / 100).toFixed(2)}`
+    // The engine formats it, so an invite cannot disagree with the screen it
+    // came from — and so a RANGE reaches the calendar at all. This line used to
+    // divide by 100 in place, which both duplicated the minor-units arithmetic
+    // and silently dropped every inexact fee (NEH-403).
+    feeAmountText(obligation) !== undefined
+      ? `Fee: ${feeAmountText(obligation)}`
       : undefined,
+    // The reason travels with the amount. Someone reading this event in their
+    // phone calendar in six months has no other way to learn that "$20.00 –
+    // $60.00" turns on a certification they have to make.
+    feeExplanation(obligation),
     `Source: ${obligation.citation}`,
     obligation.citationUrl,
     `Last verified: ${obligation.lastVerified}`,

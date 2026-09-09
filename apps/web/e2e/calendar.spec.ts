@@ -180,6 +180,28 @@ test.describe("the self-host journey", () => {
     ).toBeVisible();
   });
 
+  test("shows what the filing costs, and why the cost is a range", async ({
+    page,
+  }) => {
+    // The dashboard showed NO FEE AT ALL until NEH-403. `formatFee` existed in
+    // lib/format.ts with a test and no caller, because lib/calendar.ts never
+    // projected a fee onto the item a component renders — so the cost reached
+    // the CLI, the CSV and the calendar invite, and never the screen most
+    // people use. A unit test of the formatter passed the whole time, which is
+    // why this assertion belongs in a browser.
+    //
+    // Washington's annual report is $10 plus a Charitable Asset Protection
+    // Account fee of $50, reduced to $10 if the corporation CERTIFIES revenue
+    // under $500,000 — so $20 or $60, and which one is up to the filer. A bare
+    // "$20.00" would be the same defect Delaware had: a floor shown as a price.
+    await page.goto("/");
+
+    await expect(page.getByText("$20.00 – $60.00").first()).toBeVisible();
+    // The reason, VISIBLE — not a title attribute, which a screen reader and a
+    // touch device both miss. Without it the range is a number nobody can act on.
+    await expect(page.getByText(/certifies that its total gross revenue/i).first()).toBeVisible();
+  });
+
   test("does NOT cry wolf: no unverified banner when every rule is verified", async ({
     page,
   }) => {

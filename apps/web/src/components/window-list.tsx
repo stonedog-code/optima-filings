@@ -75,6 +75,40 @@ function Item({ item, asOf }: { item: DatedItem; asOf: string }) {
           {done ? ` · done ${formatDate(item.completedOn!)}` : ""}
         </div>
         {item.detail && <div className={css({ fontSize: "sm" })}>{item.detail}</div>}
+        {/*
+          What it costs. This row showed no fee at all until NEH-403 — the app
+          had a `formatFee` helper, a test for it, and no caller, because the
+          projection in lib/calendar.ts never carried a fee to a component. The
+          number reached the CLI, the spreadsheet and the calendar invite, and
+          never the screen most people actually use.
+
+          `item.fee` is already words, so a range says "$20.00 – $60.00" here
+          exactly as it does everywhere else. An ABSENT fee renders nothing
+          rather than an em dash or "$0.00": on a row, silence reads as "not
+          stated", while "$0.00" reads as "free" and would be a claim we cannot
+          make.
+        */}
+        {item.fee && (
+          <div className={css({ fontSize: "sm" })}>
+            Fee: {item.fee}
+            {item.feeReason && (
+              /*
+                Visible text, never a `title` tooltip — invisible to a screen
+                reader and to anyone on a touch device, and this sentence is
+                what makes a range actionable rather than merely honest.
+              */
+              <span
+                className={css({
+                  display: "block",
+                  fontSize: "xs",
+                  color: "boxTextSecondary",
+                })}
+              >
+                {item.feeReason}
+              </span>
+            )}
+          </div>
+        )}
         {/* Provenance, always. A deadline derived from a cited statute and one
             a person typed are different kinds of claim. */}
         <div className={css({ fontSize: "xs", color: "boxTextSecondary" })}>

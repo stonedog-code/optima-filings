@@ -48,6 +48,15 @@ const HEADERS = [
   "source",
   "detail",
   "completed_on",
+  // --- appended for inexact fees (NEH-403) ---
+  // `fee_minor_units` holds a fee that is ONE number and is left empty for a
+  // range, deliberately: a reader summing that column would otherwise add a
+  // minimum as though it were the price. The bounds get their own columns so a
+  // spreadsheet can still budget with them, and the explanation says why the
+  // two differ. All three are empty for an exact fee.
+  "fee_minimum_minor_units",
+  "fee_maximum_minor_units",
+  "fee_explanation",
 ] as const;
 
 /**
@@ -117,6 +126,9 @@ export function toCsv(items: readonly (Obligation | CalendarAction)[]): string {
             "user",
             item.detail,
             item.completedOn,
+            undefined, // fee_minimum_minor_units — a reminder has no fee
+            undefined, // fee_maximum_minor_units
+            undefined, // fee_explanation
           ]
         : [
             item.dueOn,
@@ -138,6 +150,12 @@ export function toCsv(items: readonly (Obligation | CalendarAction)[]): string {
             "rule",
             undefined, // detail — user rows only
             undefined, // completed_on — an obligation is computed, never completed
+            // Empty for an exact fee, populated for a range. Never both: the
+            // two are mutually exclusive on an obligation, which is what stops
+            // a column sum from mixing a price with a floor.
+            item.feeRange?.minimumMinorUnits,
+            item.feeRange?.maximumMinorUnits,
+            item.feeRange?.explanation,
           ]
       )
         .map(field)

@@ -6,6 +6,8 @@
  */
 
 import {
+  feeAmountText,
+  feeExplanation,
   isStale,
   monthsSinceVerified,
   type ConditionableFact,
@@ -31,11 +33,25 @@ export function formatMoney(minorUnits: number, currency = "USD"): string {
  *
  * An em dash, never "$0.00". Reporting zero claims the filing is free; what we
  * actually know is that nobody recorded a fee.
+ *
+ * Delegates to the engine so that this cell, the CLI table, the calendar invite
+ * and the spreadsheet cannot disagree about what a range says — see
+ * `packages/engine/src/fee.ts`. A range renders as "$20.00 – $60.00", and the
+ * reason for it comes from `formatFeeReason` rather than being crammed in here.
  */
 export function formatFee(obligation: Obligation): string {
-  return obligation.feeMinorUnits === undefined
-    ? "—"
-    : formatMoney(obligation.feeMinorUnits, obligation.currency);
+  return feeAmountText(obligation) ?? "—";
+}
+
+/**
+ * Why the fee is a range, when it is one. `undefined` for an exact or absent fee.
+ *
+ * Rendered as visible text next to the amount, never as a `title` attribute: a
+ * tooltip is invisible to a screen reader and to anyone on a touch device, and
+ * this is the sentence that stops a range being useless.
+ */
+export function formatFeeReason(obligation: Obligation): string | undefined {
+  return feeExplanation(obligation);
 }
 
 /** `2026-03-31` → `31 Mar 2026`. Unambiguous across US and non-US readers. */

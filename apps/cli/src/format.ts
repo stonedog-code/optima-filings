@@ -7,6 +7,8 @@
 
 import {
   AUTOMATIC_REVOCATION,
+  feeAmountText,
+  feeExplanation,
   isAnnualExemptOrganizationReturn,
 } from "@optima-compliance/engine";
 import type { EvaluationResult, Obligation } from "@optima-compliance/engine";
@@ -106,9 +108,10 @@ function feeColumn(obligation: Obligation): string {
   // A rule with no stated fee shows "—", never "$0.00". Reporting zero would
   // claim the filing is free when what we actually know is that the fee was
   // never recorded.
-  return obligation.feeMinorUnits === undefined
-    ? "—"
-    : formatMoney(obligation.feeMinorUnits, obligation.currency);
+  //
+  // Delegated to the engine so this column, the dashboard, the calendar invite
+  // and the spreadsheet cannot disagree about a range (NEH-403).
+  return feeAmountText(obligation) ?? "—";
 }
 
 function pad(text: string, width: number): string {
@@ -141,6 +144,7 @@ export function renderResult(
       where: o.jurisdiction,
       what: o.status === "draft" ? `${o.title}  [DRAFT]` : o.title,
       fee: feeColumn(o),
+      feeReason: feeExplanation(o),
       agency: o.agency,
       citation: o.citation,
     }));
@@ -160,6 +164,14 @@ export function renderResult(
         `  ${pad(row.due, w.due)}  ${pad(row.where, w.where)}  ${pad(row.what, w.what)}  ${pad(row.fee, w.fee)}`,
       );
       lines.push(`  ${" ".repeat(w.due)}  ${row.agency} · ${row.citation}`);
+      // Why the fee is a range, on its own line beneath the row it belongs to.
+      //
+      // A fixed-width table cannot hold a sentence, and dropping it would leave
+      // "$225.00 – $250,050.00" in a column with no way to act on it — which is
+      // the failure a range exists to avoid, not a smaller version of it.
+      if (row.feeReason !== undefined) {
+        lines.push(`  ${" ".repeat(w.due)}  Fee: ${row.feeReason}`);
+      }
     }
   }
 

@@ -10,6 +10,7 @@ import {
   entityTypeLabel,
   formatDate,
   formatFee,
+  formatFeeReason,
   formatMoney,
   jurisdictionLabel,
   relativeDue,
@@ -55,6 +56,48 @@ describe("formatFee", () => {
 
   it("shows a real zero fee as $0.00", () => {
     expect(formatFee({ ...obligation, feeMinorUnits: 0 })).toBe("$0.00");
+  });
+
+  it("shows a range as a range, and never as its minimum", () => {
+    // NEH-403. Delaware showed $50 — the report fee alone — for a filing whose
+    // real cost runs to $250,050. A cell that rendered the floor of a range
+    // would be the same mistake with better arithmetic.
+    const ranged = {
+      ...obligation,
+      currency: "USD" as const,
+      feeRange: {
+        basis: "computed" as const,
+        minimumMinorUnits: 22_500,
+        maximumMinorUnits: 25_005_000,
+        explanation: "Delaware computes this per corporation.",
+        currency: "USD" as const,
+      },
+    };
+
+    expect(formatFee(ranged)).toBe("$225.00 – $250,050.00");
+    expect(formatFee(ranged)).not.toBe("$225.00");
+  });
+});
+
+describe("formatFeeReason", () => {
+  it("has nothing to say about an exact fee", () => {
+    expect(formatFeeReason({ ...obligation, feeMinorUnits: 6000 })).toBeUndefined();
+  });
+
+  it("carries the sentence that makes a range actionable", () => {
+    expect(
+      formatFeeReason({
+        ...obligation,
+        currency: "USD" as const,
+        feeRange: {
+          basis: "conditional" as const,
+          minimumMinorUnits: 2000,
+          maximumMinorUnits: 6000,
+          explanation: "Either $20 or $60, depending on a certification you make.",
+          currency: "USD" as const,
+        },
+      }),
+    ).toMatch(/certification/);
   });
 });
 

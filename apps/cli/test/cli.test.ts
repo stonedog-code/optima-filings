@@ -180,6 +180,34 @@ describe("renderResult", () => {
     expect(output).not.toContain("$0.00");
   });
 
+  it("shows an inexact fee as a range, with its reason on its own line", () => {
+    // A fixed-width column cannot hold a sentence, and a range with no reason
+    // is a number nobody can act on — so the explanation goes beneath the row
+    // rather than being dropped (NEH-403).
+    const output = render({
+      obligations: [
+        {
+          ...baseObligation,
+          status: "active",
+          currency: "USD",
+          feeRange: {
+            basis: "computed",
+            minimumMinorUnits: 22_500,
+            maximumMinorUnits: 25_005_000,
+            explanation: "Delaware computes this per corporation; use their calculator.",
+            currency: "USD",
+          },
+        },
+      ],
+      indeterminate: [],
+    });
+
+    expect(output).toContain("$225.00 – $250,050.00");
+    expect(output).toContain("Delaware computes this per corporation");
+    // The floor alone must never be what the FEE column says.
+    expect(output).not.toMatch(/FEE\s*\n\s*\$225\.00\s*$/m);
+  });
+
   it("marks every draft line and explains what draft means", () => {
     const output = render({
       obligations: [{ ...baseObligation, status: "draft", feeMinorUnits: 6000 }],

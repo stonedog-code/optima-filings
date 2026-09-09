@@ -6,7 +6,11 @@ import "server-only";
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { isAnnualExemptOrganizationReturn } from "@optima-compliance/engine";
+import {
+  feeAmountText,
+  feeExplanation,
+  isAnnualExemptOrganizationReturn,
+} from "@optima-compliance/engine";
 import type { IndeterminateRule } from "@optima-compliance/engine";
 import type { DatedItem } from "@optima-compliance/reminders";
 import { bucket, type Bucketed } from "@optima-compliance/reminders";
@@ -49,6 +53,12 @@ export function allDatedItems(asOf: string = today()): DatedItem[] {
       // a report about it a description rather than an identifier.
       ruleId: o.ruleId,
       jurisdiction: o.jurisdiction,
+      // The fee makes the same trip, and it had never made it at all: the web
+      // app has a `formatFee` with a test and NO caller, because no fee ever
+      // reached a component. The cost of a filing was visible in the CLI, the
+      // CSV and the calendar invite, and nowhere on the dashboard (NEH-403).
+      ...(feeAmountText(o) === undefined ? {} : { fee: feeAmountText(o)! }),
+      ...(feeExplanation(o) === undefined ? {} : { feeReason: feeExplanation(o)! }),
       entityId: entity.id,
     })),
   );

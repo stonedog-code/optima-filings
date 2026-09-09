@@ -61,6 +61,27 @@ export interface DatedItem {
   ruleId?: string;
   /** `US-WA`, `US-WA/seattle`, `US`. Rule-derived items only. */
   jurisdiction?: string;
+  /**
+   * What the filing costs, already in words — `"$60.00"`, `"$20.00 – $60.00"`,
+   * `"at least $175.00"`. Rule-derived items only.
+   *
+   * Formatted rather than numeric because the engine now has three fee states
+   * and only one of them is a single number; a `feeMinorUnits` here could not
+   * carry a range without either lying about it or growing three more fields.
+   * `feeAmountText` in the engine is the one place that branch is written.
+   *
+   * **Absent means nobody established the cost** — never that the filing is
+   * free. A consumer must not render it as `$0.00`.
+   */
+  fee?: string;
+  /**
+   * Why the fee is a range, in a sentence written for the filer. Only ever
+   * present alongside a `fee` that is a range.
+   *
+   * A range with no reason is barely better than the wrong flat number it
+   * replaced (NEH-403), so a consumer showing `fee` should show this too.
+   */
+  feeReason?: string;
   /** `draft` on an unverified rule. Absent for user items — they are neither. */
   status?: "draft" | "active";
   /** User items only. Completing a rule obligation is not modelled yet. */

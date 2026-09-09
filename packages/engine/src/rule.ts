@@ -89,10 +89,85 @@ export type Cadence =
       offsetDays: number;
     };
 
-export interface Fee {
+/**
+ * A cost that is one number, which every filer of this form pays.
+ *
+ * Use it whenever it is true. Most filings are this.
+ */
+export interface ExactFee {
   /** **Integer minor units.** `6000` is $60.00. Never a float — see CLAUDE.md. */
   amountMinorUnits: number;
   currency: "USD";
+}
+
+/**
+ * A cost that is NOT one number, stated as bounds plus a required explanation.
+ *
+ * **Why this shape rather than a flat number with a caveat.** `fee` began as a
+ * single amount, and three real filings did not fit it. Delaware's corporation
+ * rule carried `$50` — the report fee alone — while 8 Del. C. § 503 sets a
+ * franchise tax of "more than $200,000 nor less than $175", so the figure a
+ * customer would have budgeted from was wrong by between 3.5x and 4000x
+ * (NEH-403). The interim fix was to record no fee at all, which is honest and
+ * tells the reader nothing: an em dash and "this filing is free" look identical.
+ *
+ * **Why the explanation is required rather than optional.** A range with no
+ * reason is barely better than the wrong flat number it replaces. Requiring it
+ * means the author who knows why the cost varies has to write it down at the
+ * moment they know, which is the only moment it is cheap.
+ *
+ * **What this deliberately is NOT.** Not a formula, and not a list of
+ * `{ conditions, amount }` pairs keyed on entity facts. Both were considered
+ * and rejected for the same reason: the three real cases do not turn on facts
+ * the engine holds. Washington's annual-report surcharge turns on the
+ * corporation *certifying* its revenue — an act, not a fact, so keying it on
+ * `grossRevenueMinorUnits` would confidently charge the wrong amount to a
+ * qualifying corporation that did not certify. Delaware's tax turns on
+ * authorised shares and assumed par value, which no fact here records. A
+ * grammar that cannot express the cases it was added for is worse than a range,
+ * because it looks like it can.
+ */
+export interface InexactFee {
+  /**
+   * Why the cost is not one number. The two want different things of a reader:
+   * `computed` sends them to the agency's calculator, `conditional` tells them
+   * to find out which case they are in.
+   */
+  basis: "computed" | "conditional";
+  /** **Integer minor units.** The least any filer pays. */
+  minimumMinorUnits?: number;
+  /**
+   * **Integer minor units.** The most any filer pays.
+   *
+   * Absent means the statute sets no ceiling — a fact about the law, not a gap
+   * in the record.
+   */
+  maximumMinorUnits?: number;
+  /**
+   * One or two sentences shown to the filer verbatim. Say what varies and where
+   * they can settle it. Written for the filer: no issue ids, no internal detail.
+   */
+  explanation: string;
+  currency: "USD";
+}
+
+/**
+ * What the filing costs, if anybody has established it.
+ *
+ * Three states, not two: an exact amount, a range that says why it is a range,
+ * and absent. Absent must keep meaning "nobody recorded this" — never "free".
+ */
+export type Fee = ExactFee | InexactFee;
+
+/**
+ * Narrow a fee to the exact kind.
+ *
+ * A type guard rather than a `"kind"` discriminant on the JSON, so that every
+ * rule written before this change stays valid unedited and a rule author still
+ * writes the obvious two fields for the common case.
+ */
+export function isExactFee(fee: Fee): fee is ExactFee {
+  return (fee as ExactFee).amountMinorUnits !== undefined;
 }
 
 export type ConditionOperator = "lt" | "lte" | "gt" | "gte" | "eq";

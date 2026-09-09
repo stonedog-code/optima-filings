@@ -60,6 +60,37 @@ describe("toICalendar", () => {
     expect(output.replaceAll("\r\n", "")).not.toContain("\n");
   });
 
+  it("carries a fee RANGE and its reason into the event description", () => {
+    // The invite is the surface a person reads six months later, on a phone,
+    // with no dashboard in front of them. Before NEH-403 this line divided by
+    // 100 in place and silently dropped every inexact fee, so the calendar
+    // showed no cost at all for the filings whose cost is hardest to guess.
+    const output = ics([
+      {
+        ...obligation,
+        feeMinorUnits: undefined,
+        currency: "USD" as const,
+        feeRange: {
+          basis: "computed" as const,
+          minimumMinorUnits: 22_500,
+          maximumMinorUnits: 25_005_000,
+          explanation: "Delaware computes this per corporation.",
+          currency: "USD" as const,
+        },
+      },
+    ]);
+    // Unfolded, because iCalendar wraps long lines at 75 octets and the
+    // assertion would otherwise fail on formatting rather than on content.
+    const unfolded = unfold(output);
+
+    // The thousands comma arrives ESCAPED — RFC 5545 gives `,` special meaning
+    // inside a TEXT value, so `$250,050.00` must travel as `$250\,050.00` or a
+    // parser reads it as two values. Asserting the escaped form is the honest
+    // expectation; asserting the bare one would have quietly demanded a bug.
+    expect(unfolded).toContain("Fee: $225.00 – $250\\,050.00");
+    expect(unfolded).toContain("Delaware computes this per corporation");
+  });
+
   it("is clock-free — identical inputs give byte-identical output", () => {
     // The reason dtstamp is a parameter. A clock here would make every export
     // differ from the last, so the file could not be diffed, cached, or
@@ -232,9 +263,22 @@ describe("toCsv", () => {
     ]);
   });
 
-  it("appends the new columns after them", () => {
+  it("appends the new columns after them, in the order they were added", () => {
+    // UPDATED for NEH-403, which appended three inexact-fee columns. The
+    // assertion is still exact and still positional — the point of it is that a
+    // column may only ever be ADDED AT THE END, so it must fail on an insertion
+    // and pass on an append. Loosening it to `toContain` would have let the
+    // very insertion it guards against through, so it was widened rather than
+    // relaxed, and the run below is the whole tail rather than a prefix of it.
     const columns = toCsv([]).split("\r\n")[0]!.split(",");
-    expect(columns.slice(12)).toEqual(["source", "detail", "completed_on"]);
+    expect(columns.slice(12)).toEqual([
+      "source",
+      "detail",
+      "completed_on",
+      "fee_minimum_minor_units",
+      "fee_maximum_minor_units",
+      "fee_explanation",
+    ]);
   });
 
   it("leaves an obligation row's original twelve values where they were", () => {
@@ -257,6 +301,44 @@ describe("toCsv", () => {
       "2026-08-01",
       "us-wa-sos-nonprofit-annual-report",
     ]);
+  });
+
+  it("puts a RANGE in its own columns and leaves fee_minor_units empty", () => {
+    // The column a reader sums must never hold a floor. `fee_minor_units` is
+    // the original column and stays exact-only; the bounds and the reason are
+    // appended columns, so a spreadsheet can budget from them without a total
+    // that mixes a price with a minimum (NEH-403).
+    const ranged = {
+      ...obligation,
+      feeMinorUnits: undefined,
+      currency: "USD" as const,
+      feeRange: {
+        basis: "computed" as const,
+        minimumMinorUnits: 22_500,
+        maximumMinorUnits: 25_005_000,
+        explanation: "Delaware computes this per corporation.",
+        currency: "USD" as const,
+      },
+    };
+    const columns = toCsv([]).split("\r\n")[0]!.split(",");
+    const values = toCsv([ranged]).split("\r\n")[1]!.split(",");
+    const cell = (name: string) => values[columns.indexOf(name)];
+
+    expect(cell("fee_minor_units")).toBe("");
+    expect(cell("fee_minimum_minor_units")).toBe("22500");
+    expect(cell("fee_maximum_minor_units")).toBe("25005000");
+    expect(values.join(",")).toContain("Delaware computes this per corporation");
+  });
+
+  it("leaves the range columns empty for an exact fee", () => {
+    const columns = toCsv([]).split("\r\n")[0]!.split(",");
+    const values = toCsv([obligation]).split("\r\n")[1]!.split(",");
+    const cell = (name: string) => values[columns.indexOf(name)];
+
+    expect(cell("fee_minor_units")).toBe("6000");
+    expect(cell("fee_minimum_minor_units")).toBe("");
+    expect(cell("fee_maximum_minor_units")).toBe("");
+    expect(cell("fee_explanation")).toBe("");
   });
 
   it("names the fee unit in the header so nobody misreads 6000", () => {
