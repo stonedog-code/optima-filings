@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://optimafilings.com/schema/rule.v1.json",
   "title": "Optima Filings rule, v1",
-  "description": "One filing obligation in one jurisdiction. See docs/rule-authoring.md \u2014 you can usually copy a neighbouring rule and change three fields.",
+  "description": "One filing obligation in one jurisdiction. See CONTRIBUTING.md, \"If you want to write the rule yourself\" \u2014 you can usually copy a neighbouring rule and change three fields.",
   "definitions": {
     "condition": {
       "type": "object",
