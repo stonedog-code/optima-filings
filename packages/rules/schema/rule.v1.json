@@ -22,9 +22,13 @@
             "solicitsCharitableContributions",
             "isPrivateFoundation",
             "isSupportingOrganization",
+            "contributionsRaisedMinorUnits",
+            "allFundraisingUnpaid",
+            "assetsOrIncomeInureToInsiders",
+            "incomeProducingCharitableAssetsMinorUnits",
             "normalAnnualGrossReceiptsMinorUnits"
           ],
-          "description": "Most of these are facts an entity supplies. normalAnnualGrossReceiptsMinorUnits is DERIVED by the engine from gross revenue and the two prior years, per Rev. Proc. 2011-15 section 4 - a federal 'normally not more than' test is an average, not a single year's figure, so a rule that means the IRS test must name the derived fact and not the raw one."
+          "description": "Most of these are facts an entity supplies. normalAnnualGrossReceiptsMinorUnits is DERIVED by the engine from gross revenue and the two prior years, per Rev. Proc. 2011-15 section 4 - a federal 'normally not more than' test is an average, not a single year's figure, so a rule that means the IRS test must name the derived fact and not the raw one. Several pairs here are deliberately NEAR-SYNONYMS that a rule author must not swap: grossRevenueMinorUnits is all revenue while contributionsRaisedMinorUnits is only what was raised by asking, and charitableAssetsMinorUnits is everything held for charitable purposes while incomeProducingCharitableAssetsMinorUnits is only the part invested for income. Picking the wider one where a statute names the narrower one over-triggers a registration, which is the mistake WAC 434-120-305 was read to correct."
         },
         "op": {
           "enum": [

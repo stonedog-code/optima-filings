@@ -279,4 +279,74 @@ export const MIGRATIONS: readonly { id: number; name: string; sql: string }[] = 
       ALTER TABLE entities ADD COLUMN charitable_assets_minor_units INTEGER;
     `,
   },
+  {
+    id: 8,
+    name: "wa_volunteer_exemption_and_income_producing_assets",
+    sql: `
+      -- Four columns for two Washington rules that were each asking a question
+      -- the fact model could not answer, so each answered a NEARBY question
+      -- instead and told some organisations to make a filing they do not owe.
+
+      -- Contributions RAISED in the accounting year: money obtained by asking.
+      --
+      -- A SEPARATE column from gross_revenue_minor_units, and the separation is
+      -- the point. Gross revenue also carries program-service revenue, ticket
+      -- sales, investment income and government contracts, none of which is
+      -- raised by solicitation. RCW 19.09.081(1) exempts a charity "raising
+      -- less than fifty thousand dollars in any accounting year" when the other
+      -- two limbs below also hold, and testing gross revenue against that line
+      -- would deny the exemption to a theatre living on ticket sales.
+      ALTER TABLE entities ADD COLUMN contributions_raised_minor_units INTEGER;
+
+      -- Whether ALL the organisation's activities, fundraising included, are
+      -- carried on by people unpaid for their services. The second limb of the
+      -- same exemption, verbatim: "when all the activities of the organization,
+      -- including all fund-raising activities, are carried on by persons who
+      -- are unpaid for their services".
+      --
+      -- NULLABLE, AND NULL IS THE POINT, for the fourth time in four
+      -- migrations. Both defaults are wrong in a way that hides: a
+      -- NOT NULL DEFAULT 0 denies the exemption to every organisation already
+      -- in every self-hoster's database, which is the over-filing this column
+      -- exists to remove, and a DEFAULT 1 grants it to all of them, which is
+      -- under-filing. The third state is the only honest value for a row
+      -- nobody has asked.
+      ALTER TABLE entities ADD COLUMN all_fundraising_unpaid INTEGER;
+
+      -- Whether any part of assets or income inures to, or is paid to, an
+      -- officer, director, member or trustee -- other than as part of a
+      -- charitable class the organisation benefits. The THIRD limb of the same
+      -- exemption, and it is stored rather than assumed because the exemption
+      -- is conjunctive: leaving a limb out makes the exemption this pack
+      -- implements broader than the statute's, exempting organisations the
+      -- statute does not. That is under-filing.
+      --
+      -- Stored POSITIVELY -- 1 means inurement exists and the organisation
+      -- must register -- so the rule reads as a plain condition rather than a
+      -- negation of a negation. The statute phrases it the other way round, so
+      -- read the sign before comparing the two.
+      ALTER TABLE entities ADD COLUMN assets_or_income_inure_to_insiders INTEGER;
+
+      -- The portion of charitable assets INVESTED FOR INCOME-PRODUCING
+      -- PURPOSES.
+      --
+      -- Narrower than charitable_assets_minor_units, added one migration ago,
+      -- and a separate column rather than a redefinition of it: a self-hoster
+      -- has already answered the broader question, and narrowing a column's
+      -- meaning in place re-answers it on their behalf with nothing failing
+      -- anywhere. WAC 434-120-305 requires a trustee to register where "the
+      -- trustee holds assets, invested for income-producing purposes,
+      -- exceeding a value of two hundred fifty thousand dollars", and the
+      -- qualifier is doing real work: a land trust holding easements, a museum
+      -- holding a collection and a food bank holding its warehouse each hold
+      -- charitable assets far over the line while holding nothing invested for
+      -- income. All three were being told to register.
+      --
+      -- NULLABLE, and a genuine 0 is a real answer that must survive: an
+      -- organisation really can hold no income-producing assets, which is a
+      -- different fact from not having been asked. Only one of them is an
+      -- answer, and the engine reads them differently.
+      ALTER TABLE entities ADD COLUMN income_producing_charitable_assets_minor_units INTEGER;
+    `,
+  },
 ];

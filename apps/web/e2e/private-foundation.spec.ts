@@ -216,6 +216,16 @@ test.describe("the private-foundation question", () => {
       "charitableAssetsMinorUnits",
       "solicitsCharitableContributions",
       "employeeCount",
+      // The four added for the Washington charity rules (NEH-413). Listed for
+      // the reason the comment above gives: these are the newest identifiers
+      // and therefore the ones most likely to have shipped without a label in
+      // `CONDITIONABLE_FACT_LABELS`, which is what makes the raw name reach a
+      // screen. `format.test.ts` asserts that every conditionable fact HAS a
+      // label; this asserts that no identifier reaches a customer even so.
+      "contributionsRaisedMinorUnits",
+      "allFundraisingUnpaid",
+      "assetsOrIncomeInureToInsiders",
+      "incomeProducingCharitableAssetsMinorUnits",
     ]) {
       expect(body).not.toContain(identifier);
     }

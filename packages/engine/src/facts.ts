@@ -223,6 +223,138 @@ export interface EntityFacts {
    * choose, and a return the IRS permits any organisation to file voluntarily.
    */
   isSupportingOrganization?: boolean;
+
+  /**
+   * Contributions **raised** in the accounting year, in integer minor units.
+   *
+   * The gross amount received in response to charitable solicitation - gifts,
+   * donations, grants and pledges collected from the public - **before**
+   * deducting the cost of raising it. Gross, because a threshold on the net
+   * would let an organisation spend its way under the line.
+   *
+   * **Deliberately not `grossRevenueMinorUnits`, and the difference is the
+   * whole reason this fact exists.** A nonprofit's gross revenue also carries
+   * program-service revenue (ticket sales, tuition, clinic fees), investment
+   * income, and government contracts - none of which is money it *raised* by
+   * asking. A theatre with $500,000 of ticket sales and $12,000 of donations
+   * has raised $12,000. Testing gross revenue against a solicitation threshold
+   * would catch that theatre and, symmetrically, an endowment-funded grantmaker
+   * whose revenue is investment income. Reusing the existing fact would have
+   * been one line and wrong in both directions.
+   *
+   * **Scope, because Washington does not define the term and this is therefore
+   * this pack's reading rather than the statute's.** RCW 19.09.081(1) says
+   * "raising less than fifty thousand dollars in any accounting year" and
+   * leaves "raising" undefined; RCW 19.09.020's definition of "solicitation"
+   * is what fixes the sense used here - an oral or written request for a
+   * contribution. Where a receipt is genuinely ambiguous (a sponsorship that is
+   * part gift and part advertising), counting it IN is the reading this pack
+   * takes, because a larger figure can only push an organisation toward
+   * registering and over-filing is the direction chosen when one must be.
+   *
+   * No default. An organisation that has not answered leaves the Washington
+   * solicitation rule undecided rather than being told either way - see
+   * `isPrivateFoundation` for why an absent fact is three states and not two.
+   */
+  contributionsRaisedMinorUnits?: number;
+
+  /**
+   * Whether **all** the organisation's activities, fundraising included, are
+   * carried on by people who are unpaid for their services.
+   *
+   * The second limb of the RCW 19.09.081(1) exemption, quoted verbatim: "when
+   * all the activities of the organization, including all fund-raising
+   * activities, are carried on by persons who are unpaid for their services".
+   *
+   * **"All the activities", not "the fundraising".** One paid part-time
+   * bookkeeper is enough to fail this, even if every dollar is raised by
+   * volunteers - the statute reaches the whole organisation and only then names
+   * fundraising to close the obvious gap. A fact called `usesPaidFundraisers`
+   * would read as the same question and answer a narrower one, which is why
+   * this is named for the whole test.
+   *
+   * Unpaid *for their services*: reimbursing a volunteer's mileage is not pay.
+   *
+   * No default, for the reason above and one specific to this fact - a `false`
+   * default would silently deny the exemption to every organisation that has
+   * not been asked, which is the over-filing this fact exists to remove, and a
+   * `true` default would grant it to every organisation that has not been
+   * asked, which is under-filing. Neither is honest; the third state is.
+   */
+  allFundraisingUnpaid?: boolean;
+
+  /**
+   * Whether any part of the organisation's assets or income inures to, or is
+   * paid to, an officer, director, member or trustee.
+   *
+   * The **third** limb of RCW 19.09.081(1), and it is modelled rather than
+   * dropped because the exemption is a conjunction: omitting a limb makes the
+   * exemption we implement *broader* than the statute's, and a broader
+   * exemption is under-filing - the one direction this pack does not accept.
+   * Whether it was worth a whole fact is argued in
+   * `docs/rule-verification/2026-09-09-wa-charity-exemption-facts.md`; the
+   * short answer is that the organisation it would otherwise mis-exempt is a
+   * real one and that the question
+   * is only ever asked of an organisation the first two limbs have already
+   * placed inside the exemption.
+   *
+   * Stated **positively** - true means inurement exists and the organisation
+   * must register - so the rule reads as a plain condition rather than as a
+   * negation of a negation. The statute phrases it the other way ("no part
+   * of ... inures"), so read the sign carefully when checking this against it.
+   *
+   * The statutory carve-out is carried in the meaning: a payment made to
+   * someone "as part of a charitable class benefited by the charitable
+   * organization" is **not** inurement. A trustee of a scholarship fund whose
+   * child wins a scholarship on the same terms as every other applicant has not
+   * caused inurement.
+   *
+   * Scope: this fact exists for the Washington exemption and means what RCW
+   * 19.09.081(1) means by it. It is **not** the federal section 501(c)(3)
+   * inurement prohibition, which is absolute, differently scoped ("private
+   * shareholder or individual"), and would be a different fact if a rule ever
+   * needed it. Nothing here should be read as an opinion on exempt status.
+   *
+   * No default. An unanswered question leaves the rule undecided and the
+   * question attached, which is the honest outcome for a small all-volunteer
+   * charity that has answered the other two limbs.
+   */
+  assetsOrIncomeInureToInsiders?: boolean;
+
+  /**
+   * The portion of charitable assets **invested for income-producing
+   * purposes**, in integer minor units.
+   *
+   * A narrower quantity than `charitableAssetsMinorUnits`, and a separate fact
+   * rather than a redefinition of it, because changing what an existing fact
+   * means is the one change this file says is not cheap: every stored figure
+   * and every self-hoster's answer would silently start meaning something else.
+   *
+   * WAC 434-120-305 requires a trustee to register where "the trustee holds
+   * assets, **invested for income-producing purposes**, exceeding a value of
+   * two hundred fifty thousand dollars". That qualifier is doing real work. A
+   * land trust holding $4,000,000 of conservation easements, a museum holding a
+   * collection, a food bank holding the warehouse it operates from - each holds
+   * charitable assets far over the line and none of them holds assets *invested
+   * for income*. Testing the broader figure told all three to register and pay
+   * for a filing the regulation does not ask of them.
+   *
+   * What counts: an endowment, an invested reserve, a portfolio, rental
+   * property held as an investment. What does not: property in direct
+   * charitable use, however valuable.
+   *
+   * **`charitableAssetsMinorUnits` keeps its meaning and stays in the model.**
+   * It is the quantity several other states test, and it is what a self-hoster
+   * has already answered; narrowing it in place would have quietly re-answered
+   * a question on their behalf. After this change no shipped rule conditions on
+   * it, which is a fact about the current pack rather than about the fact.
+   *
+   * No default. An organisation that has answered only the broader figure gets
+   * an undecided trust registration and a question naming this one, which is
+   * the correct outcome: we do not know, and the two figures differ for exactly
+   * the organisations the distinction was drawn for.
+   */
+  incomeProducingCharitableAssetsMinorUnits?: number;
 }
 
 /**
@@ -241,6 +373,10 @@ export const CONDITIONABLE_FACTS = [
   "solicitsCharitableContributions",
   "isPrivateFoundation",
   "isSupportingOrganization",
+  "contributionsRaisedMinorUnits",
+  "allFundraisingUnpaid",
+  "assetsOrIncomeInureToInsiders",
+  "incomeProducingCharitableAssetsMinorUnits",
   // DERIVED, not supplied. See `deriveFactValues` in `derived.ts` - it is
   // computed from `grossRevenueMinorUnits` and the two prior-year facts per
   // Rev. Proc. 2011-15 section 4. Conditionable because the rules test it; not

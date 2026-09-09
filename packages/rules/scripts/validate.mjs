@@ -37,6 +37,10 @@ const CONDITIONABLE_FACTS = [
   "solicitsCharitableContributions",
   "isPrivateFoundation",
   "isSupportingOrganization",
+  "contributionsRaisedMinorUnits",
+  "allFundraisingUnpaid",
+  "assetsOrIncomeInureToInsiders",
+  "incomeProducingCharitableAssetsMinorUnits",
   "normalAnnualGrossReceiptsMinorUnits",
 ];
 

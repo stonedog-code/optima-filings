@@ -29,6 +29,14 @@ export const WA_SMALL_CHARITY: EntityFacts = {
   // fixture undecidable rather than making it a public charity.
   isPrivateFoundation: false,
   isSupportingOrganization: false,
+  // UNDER the $50,000 line and NOT exempt, which is the whole point of putting
+  // these three together on the smallest fixture in the file. RCW 19.09.081(1)
+  // is a conjunction: raising little is necessary and not sufficient. This
+  // organisation pays a part-time coordinator, so it registers despite raising
+  // $38,000 — and a model that tested only the money would wrongly exempt it.
+  contributionsRaisedMinorUnits: 3_800_000, // $38,000 raised by asking
+  allFundraisingUnpaid: false,
+  assetsOrIncomeInureToInsiders: false,
 };
 
 export const WA_LARGE_CHARITY: EntityFacts = {
@@ -43,6 +51,12 @@ export const WA_LARGE_CHARITY: EntityFacts = {
   solicitsCharitableContributions: true,
   isPrivateFoundation: false,
   isSupportingOrganization: false,
+  // Far over the $50,000 line, so the volunteer exemption cannot apply however
+  // the other two limbs are answered. Deliberately the fixture that exercises
+  // the MONEY limb, where WA_SMALL_CHARITY exercises the volunteer one.
+  contributionsRaisedMinorUnits: 290_000_000, // $2.9M raised by asking
+  allFundraisingUnpaid: false,
+  assetsOrIncomeInureToInsiders: false,
 };
 
 export const OR_LLC: EntityFacts = {
@@ -157,8 +171,20 @@ export const ENDOWED_NON_SOLICITING_CHARITY: EntityFacts = {
   fiscalYearEnd: "12-31",
   grossRevenueMinorUnits: 3_000_000,
   totalAssetsMinorUnits: 900_000_000,
-  charitableAssetsMinorUnits: 800_000_000, // $8M, far over the $250k line
+  charitableAssetsMinorUnits: 800_000_000, // $8M held for charitable purposes
+  // ALL of it invested, because this is an endowment: the two figures agree
+  // here, and they are still two figures. WAC 434-120-305 tests this narrower
+  // one — see WA_PROGRAM_PROPERTY_CHARITY for the organisation where they
+  // differ, which is the case the broader fact got wrong.
+  incomeProducingCharitableAssetsMinorUnits: 800_000_000, // $8M, over the $250k line
   solicitsCharitableContributions: false,
+  // Raised nothing, because it does not ask. Carried explicitly so that the
+  // tests which flip `solicitsCharitableContributions` to true get a decidable
+  // entity rather than an indeterminate one — and it has paid staff, so
+  // flipping it registers on the volunteer limb rather than the money one.
+  contributionsRaisedMinorUnits: 0,
+  allFundraisingUnpaid: false,
+  assetsOrIncomeInureToInsiders: false,
   isPrivateFoundation: false,
   isSupportingOrganization: false,
 };
@@ -192,6 +218,14 @@ export const JUNE_YEAR_END_SOLICITING_CHARITY: EntityFacts = {
   solicitsCharitableContributions: true,
   isPrivateFoundation: false,
   isSupportingOrganization: false,
+  // Carried so this fixture stays DECIDED. Its whole job is the roll-backward
+  // date, and an entity that went indeterminate on the volunteer exemption
+  // would produce no obligation at all — the weekend assertion would then pass
+  // vacuously against an empty list, which is the failure this repo keeps
+  // catching elsewhere.
+  contributionsRaisedMinorUnits: 1_100_000, // $11,000
+  allFundraisingUnpaid: false,
+  assetsOrIncomeInureToInsiders: false,
 };
 
 /**
@@ -467,4 +501,203 @@ export const ONE_CENT_OVER_THE_AVERAGE_LINE_CHARITY: EntityFacts = {
   solicitsCharitableContributions: true,
   isPrivateFoundation: false,
   isSupportingOrganization: false,
+};
+
+// ---------------------------------------------------------------------------
+// RCW 19.09.081(1) — the volunteer exemption, and both sides of each limb
+// ---------------------------------------------------------------------------
+//
+// The exemption is a CONJUNCTION of three tests, so the rule applies when ANY
+// of them fails. Every fixture below is identical except for the one answer it
+// is named for, which is what makes each of them evidence about that answer
+// rather than about the organisation.
+//
+// **Each one is chosen so that it decides DIFFERENTLY under the pre-2026-09-09
+// model**, where the rule's only condition was `solicitsCharitableContributions
+// eq true`. Under that model every fixture here registers, because all of them
+// solicit. A fixture that registered under both models would prove nothing —
+// NEH-400's lesson, and the reason the numbers are not round.
+
+/**
+ * The organisation the old rule was wrong about: small, and entirely voluntary.
+ *
+ * Raises $31,500 by asking, every hand unpaid, nothing going to an insider — so
+ * RCW 19.09.081(1) exempts it from the application requirements of RCW
+ * 19.09.075, and an organisation that never had to register has no renewal to
+ * make either.
+ *
+ * **Under the old rule this fixture owed the $40 renewal**, because it solicits
+ * and that was the only question asked. That is the false positive the ticket
+ * described, and it landed on the organisations least able to absorb it.
+ */
+export const WA_VOLUNTEER_EXEMPT_CHARITY: EntityFacts = {
+  name: "Example Nisqually Trailkeepers",
+  entityTypes: ["501c3", "nonprofit-corp"],
+  formedOn: "2017-04-11",
+  homeJurisdiction: "US-WA",
+  jurisdictions: ["US-WA"],
+  fiscalYearEnd: "12-31",
+  grossRevenueMinorUnits: 3_150_000,
+  // IT SOLICITS. Without this the rule's first condition is unknown, the whole
+  // rule is indeterminate, and every "is exempt" assertion below passes for the
+  // wrong reason while every "must register" one fails. That is exactly what
+  // happened when this fixture was first written, and the missing-facts
+  // assertion in rule-packs.test.ts is what caught it.
+  solicitsCharitableContributions: true,
+  // $31,500 — comfortably under the line, so this fixture is about the
+  // conjunction rather than about the boundary. The boundary has its own pair.
+  contributionsRaisedMinorUnits: 3_150_000,
+  allFundraisingUnpaid: true,
+  assetsOrIncomeInureToInsiders: false,
+  isPrivateFoundation: false,
+  isSupportingOrganization: false,
+};
+
+/**
+ * Exactly $50,000 raised, and therefore NOT exempt.
+ *
+ * RCW 19.09.081(1) exempts an organisation "raising **less than** fifty
+ * thousand dollars", so the exemption stops at $49,999.99 and an organisation
+ * raising precisely $50,000 registers. Hence `gte` on the rule's money limb,
+ * where the trust rule's asset test uses `gt` for the opposite reason — WAC
+ * 434-120-305 says "exceeding". **The two Washington charity rules use
+ * different operators at their thresholds and both are right**, which is
+ * exactly the kind of detail a fixture has to pin because nothing else will.
+ *
+ * Identical to [[WA_VOLUNTEER_EXEMPT_CHARITY]] but for the amount.
+ */
+export const WA_VOLUNTEER_CHARITY_AT_FIFTY_THOUSAND: EntityFacts = {
+  ...WA_VOLUNTEER_EXEMPT_CHARITY,
+  name: "Example Nisqually Trailkeepers (at the line)",
+  contributionsRaisedMinorUnits: 5_000_000, // exactly $50,000.00
+};
+
+/**
+ * One cent under the line, and therefore exempt.
+ *
+ * The other side of the same boundary. Without it, the assertion above would be
+ * satisfied by a rule that fired for every organisation regardless — the
+ * failure mode that made a whole Oregon fixture set endorse the wrong anchor.
+ */
+export const WA_VOLUNTEER_CHARITY_ONE_CENT_UNDER: EntityFacts = {
+  ...WA_VOLUNTEER_EXEMPT_CHARITY,
+  name: "Example Nisqually Trailkeepers (one cent under)",
+  contributionsRaisedMinorUnits: 5_000_000 - 1, // $49,999.99
+};
+
+/**
+ * Small and all-volunteer, but money reaches an insider.
+ *
+ * The third limb, alone. Everything else about this organisation places it
+ * inside the exemption; the statute takes it back out because "no part of the
+ * charitable organization's assets or income inures to the benefit of or is
+ * paid to any officer, director, member, or trustee" is part of the same
+ * sentence.
+ *
+ * **This fixture is the argument for modelling the third limb at all.** Drop
+ * it, and this organisation is exempted by a pack that has decided the statute
+ * meant something shorter than it said — under-filing, on our own initiative.
+ */
+export const WA_VOLUNTEER_CHARITY_WITH_INUREMENT: EntityFacts = {
+  ...WA_VOLUNTEER_EXEMPT_CHARITY,
+  name: "Example Nisqually Trailkeepers (paying a trustee)",
+  assetsOrIncomeInureToInsiders: true,
+};
+
+/**
+ * Small and all-volunteer, and has not answered the inurement question.
+ *
+ * Drives the indeterminate path for the exemption. Two limbs point at the
+ * exemption and the third is unknown, so the rule is undecidable and must be
+ * REPORTED with the missing fact named — not silently dropped, and not decided
+ * either way.
+ *
+ * Exactly one unknown, deliberately: an entity missing several facts cannot
+ * show which question the row is actually asking for.
+ *
+ * Written out in full rather than spread from the fixture above with the key
+ * set to `undefined`: `exactOptionalPropertyTypes` makes those two different
+ * types, and only the ABSENT key is what a real unanswered entity looks like.
+ */
+export const WA_VOLUNTEER_CHARITY_UNANSWERED_INUREMENT: EntityFacts = {
+  name: "Example Nisqually Trailkeepers (question unanswered)",
+  entityTypes: ["501c3", "nonprofit-corp"],
+  formedOn: "2017-04-11",
+  homeJurisdiction: "US-WA",
+  jurisdictions: ["US-WA"],
+  fiscalYearEnd: "12-31",
+  grossRevenueMinorUnits: 3_150_000,
+  solicitsCharitableContributions: true,
+  contributionsRaisedMinorUnits: 3_150_000,
+  allFundraisingUnpaid: true,
+  isPrivateFoundation: false,
+  isSupportingOrganization: false,
+};
+
+// ---------------------------------------------------------------------------
+// WAC 434-120-305 — "invested for income-producing purposes"
+// ---------------------------------------------------------------------------
+
+/**
+ * $4,150,000 of charitable assets, none of it invested for income.
+ *
+ * A land trust: its holdings are conservation easements and the trailhead
+ * parcels it maintains. Charitable property in direct program use, producing
+ * nothing, which is what WAC 434-120-305 does not reach — the regulation
+ * requires registration where "the trustee holds assets, **invested for
+ * income-producing purposes**, exceeding a value of two hundred fifty thousand
+ * dollars".
+ *
+ * **This is the fixture that separates the right model from the wrong one.**
+ * Under the pre-2026-09-09 rule, which tested `charitableAssetsMinorUnits`, it
+ * held $4.15M against a $250,000 line and was told to register and pay. Under
+ * the corrected rule it owes nothing. No other fixture in this file decides
+ * differently between the two, because in every other one the two figures
+ * happen to agree.
+ *
+ * It does not solicit, so the solicitation rule cannot mask the result.
+ */
+export const WA_PROGRAM_PROPERTY_CHARITY: EntityFacts = {
+  name: "Example Skookum Creek Land Trust",
+  entityTypes: ["501c3", "nonprofit-corp"],
+  formedOn: "2006-10-02",
+  homeJurisdiction: "US-WA",
+  jurisdictions: ["US-WA"],
+  fiscalYearEnd: "12-31",
+  charitableAssetsMinorUnits: 415_000_000, // $4.15M of easements and parcels
+  incomeProducingCharitableAssetsMinorUnits: 0, // and not a cent of it invested
+  solicitsCharitableContributions: false,
+};
+
+/**
+ * The same land trust after it is left an endowment.
+ *
+ * Identical but for the invested figure, which is now $310,000 — over the line
+ * while the program property is unchanged. Without this, the assertion that the
+ * fixture above owes nothing would be satisfied by a rule that never fired.
+ */
+export const WA_PROGRAM_PROPERTY_CHARITY_WITH_ENDOWMENT: EntityFacts = {
+  ...WA_PROGRAM_PROPERTY_CHARITY,
+  name: "Example Skookum Creek Land Trust (endowed)",
+  charitableAssetsMinorUnits: 415_000_000 + 31_000_000,
+  incomeProducingCharitableAssetsMinorUnits: 31_000_000, // $310,000 invested
+};
+
+/**
+ * Has answered the broad assets question and not the narrow one.
+ *
+ * The migration path, as a fixture. A self-hoster who filled the form in before
+ * 2026-09-09 has `charitableAssetsMinorUnits` and nothing else, and the honest
+ * outcome is an undecided registration naming the figure we now need — not the
+ * old answer carried forward, and not silence.
+ */
+export const WA_CHARITY_BROAD_ASSETS_ONLY: EntityFacts = {
+  name: "Example Skookum Creek Land Trust (pre-migration answers)",
+  entityTypes: ["501c3", "nonprofit-corp"],
+  formedOn: "2006-10-02",
+  homeJurisdiction: "US-WA",
+  jurisdictions: ["US-WA"],
+  fiscalYearEnd: "12-31",
+  charitableAssetsMinorUnits: 415_000_000,
+  solicitsCharitableContributions: false,
 };

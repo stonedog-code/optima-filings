@@ -152,6 +152,10 @@ describe("the resolved fact set", () => {
       solicitsCharitableContributions: true,
       isPrivateFoundation: false,
       isSupportingOrganization: false,
+      contributionsRaisedMinorUnits: 7,
+      allFundraisingUnpaid: true,
+      assetsOrIncomeInureToInsiders: false,
+      incomeProducingCharitableAssetsMinorUnits: 8,
     };
     const values = deriveFactValues(supplied);
     for (const fact of CONDITIONABLE_FACTS) {

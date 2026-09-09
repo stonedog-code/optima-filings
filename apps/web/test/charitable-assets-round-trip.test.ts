@@ -27,6 +27,20 @@
  * fifty thousand dollars" — so $250,000 exactly does NOT register and
  * $250,000.01 does. The boundary cases below are that sentence, not the rule
  * JSON's restatement of it.
+ *
+ * ## Updated 2026-09-09: the rule now tests the phrase this file already quoted
+ *
+ * The quotation above was right and the rule was not. It conditioned on
+ * `charitableAssetsMinorUnits` — everything held for charitable purposes —
+ * while the regulation names only the part "invested for income-producing
+ * purposes". A land trust holding $4M of easements was told to register.
+ *
+ * So this file now walks TWO seams rather than one. The broad figure must still
+ * survive storage, because that is the defect this file was written for and it
+ * would return the moment nobody was asserting it; and the NARROW figure must
+ * now be the one that decides the rule. The pair of them is what makes the
+ * distinction testable at all: an assertion that the narrow figure drives the
+ * outcome is only evidence if the broad one demonstrably does not.
  */
 import { evaluate } from "@optima-compliance/engine";
 import { ALL_RULES } from "@optima-compliance/rules";
@@ -100,11 +114,67 @@ describe("a charitable-assets figure entered on the self-host form", () => {
     expect(read.charitableAssetsMinorUnits).toBe(10_000_000);
   });
 
+  it("stores the INVESTED figure as a second, distinct number", () => {
+    // Migration 8's half of the same seam. Two columns, two answers, and an
+    // organisation whose charitable property is mostly in program use has a
+    // much smaller invested figure than charitable one.
+    const { parsed, read } = storeRoundTrip(
+      postedForm({
+        charitableAssets: "4150000",
+        incomeProducingCharitableAssets: "310000",
+      }),
+    );
+    expect(parsed.incomeProducingCharitableAssetsMinorUnits).toBe(31_000_000);
+    expect(read.incomeProducingCharitableAssetsMinorUnits).toBe(31_000_000);
+    // Neither figure has overwritten the other on the way through storage.
+    expect(read.charitableAssetsMinorUnits).toBe(415_000_000);
+  });
+
+  it("does NOT decide the rule from the broad figure any more", () => {
+    // The 2026-09-09 correction, as a test that fails against the old model.
+    //
+    // $4,150,000 of charitable assets and NOTHING invested for income: a land
+    // trust holding easements and trailhead parcels. The old rule read the
+    // first number, saw it sixteen times over the $250,000 line, and issued a
+    // registration and a $25 fee. WAC 434-120-305 does not reach it.
+    //
+    // This is the one assertion in the file that decides differently under the
+    // two models, which is what makes it evidence rather than decoration.
+    const { read } = storeRoundTrip(
+      postedForm({
+        charitableAssets: "4150000",
+        incomeProducingCharitableAssets: "0",
+      }),
+    );
+    const result = evaluate(read, ALL_RULES, { asOf: AS_OF, horizonMonths: 24 });
+    expect(result.obligations.map((o) => o.ruleId)).not.toContain(RULE_ID);
+    // Decided, not dodged: a zero is an answer, so this must not be
+    // indeterminate either.
+    expect(result.indeterminate.map((r) => r.ruleId)).not.toContain(RULE_ID);
+  });
+
+  it("asks for the NARROW figure when only the broad one was given", () => {
+    // The upgrade path for a self-hoster who filled this form in before
+    // 2026-09-09. Their broad answer is kept and is not silently reused as the
+    // narrow one, so the rule is undecided and names what it needs.
+    const { read } = storeRoundTrip(postedForm({ charitableAssets: "4150000" }));
+    expect(read.charitableAssetsMinorUnits).toBe(415_000_000);
+    expect("incomeProducingCharitableAssetsMinorUnits" in read).toBe(false);
+
+    const result = evaluate(read, ALL_RULES, { asOf: AS_OF, horizonMonths: 24 });
+    const row = result.indeterminate.find((r) => r.ruleId === RULE_ID);
+    expect(row?.missingFacts).toEqual([
+      "incomeProducingCharitableAssetsMinorUnits",
+    ]);
+  });
+
   it("turns an indeterminate row into a dated obligation over the line", () => {
     // The user-visible outcome, and the thing the ticket asked for: a
     // Washington charitable trust over $250,000 gets a date instead of a
     // question about a figure it already gave.
-    const { read } = storeRoundTrip(postedForm({ charitableAssets: "300000" }));
+    const { read } = storeRoundTrip(
+      postedForm({ incomeProducingCharitableAssets: "300000" }),
+    );
     const result = evaluate(read, ALL_RULES, { asOf: AS_OF, horizonMonths: 24 });
 
     expect(result.indeterminate.map((r) => r.ruleId)).not.toContain(RULE_ID);
@@ -120,12 +190,13 @@ describe("a charitable-assets figure entered on the self-host form", () => {
     // which is the wrong-answer direction rather than the missing-answer one.
     const { read } = storeRoundTrip(postedForm());
     expect("charitableAssetsMinorUnits" in read).toBe(false);
+    expect("incomeProducingCharitableAssetsMinorUnits" in read).toBe(false);
 
     const result = evaluate(read, ALL_RULES, { asOf: AS_OF, horizonMonths: 24 });
     expect(result.indeterminate.map((r) => r.ruleId)).toContain(RULE_ID);
     expect(
       result.indeterminate.find((r) => r.ruleId === RULE_ID)?.missingFacts,
-    ).toContain("charitableAssetsMinorUnits");
+    ).toContain("incomeProducingCharitableAssetsMinorUnits");
   });
 
   it.each([
@@ -136,7 +207,9 @@ describe("a charitable-assets figure entered on the self-host form", () => {
     // organisation. Asserted here as well as in the engine's own fixtures
     // because this is the path a real self-hoster's figure travels, and a
     // cent lost to floating point on the way through storage would move it.
-    const { read } = storeRoundTrip(postedForm({ charitableAssets: dollars }));
+    const { read } = storeRoundTrip(
+      postedForm({ incomeProducingCharitableAssets: dollars }),
+    );
     const result = evaluate(read, ALL_RULES, { asOf: AS_OF, horizonMonths: 24 });
     const due = result.obligations.some((o) => o.ruleId === RULE_ID);
     expect(due).toBe(expectDue);

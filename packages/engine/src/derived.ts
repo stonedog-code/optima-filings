@@ -153,6 +153,21 @@ export function deriveFactValues(entity: EntityFacts): FactValues {
     ...(entity.isSupportingOrganization !== undefined
       ? { isSupportingOrganization: entity.isSupportingOrganization }
       : {}),
+    ...(entity.contributionsRaisedMinorUnits !== undefined
+      ? { contributionsRaisedMinorUnits: entity.contributionsRaisedMinorUnits }
+      : {}),
+    ...(entity.allFundraisingUnpaid !== undefined
+      ? { allFundraisingUnpaid: entity.allFundraisingUnpaid }
+      : {}),
+    ...(entity.assetsOrIncomeInureToInsiders !== undefined
+      ? { assetsOrIncomeInureToInsiders: entity.assetsOrIncomeInureToInsiders }
+      : {}),
+    ...(entity.incomeProducingCharitableAssetsMinorUnits !== undefined
+      ? {
+          incomeProducingCharitableAssetsMinorUnits:
+            entity.incomeProducingCharitableAssetsMinorUnits,
+        }
+      : {}),
     ...(normalAnnualGrossReceiptsMinorUnits !== undefined
       ? { normalAnnualGrossReceiptsMinorUnits }
       : {}),
