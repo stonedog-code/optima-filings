@@ -94,8 +94,9 @@ a fix that also moved the date would be a second defect hiding inside the first.
   exclusion is real and differently shaped — most must file 990 or 990-EZ, while
   one supporting a religious organisation with gross receipts normally $5,000 or
   less may still use 990-N. Modelling it needs its own fact and a change to the
-  990-EZ floor, or such an organisation matches no federal return at all. See
-  `docs/prd/private-foundation-fact.md`.
+  990-EZ floor, or such an organisation matches no federal return at all. It was
+  modelled on 2026-09-03 as `isSupportingOrganization`; see
+  `docs/rule-verification/2026-09-03-990-family-receipts-and-supporting-organisations.md`.
 
 ## 5. Why the rule ships `active` rather than `draft`
 

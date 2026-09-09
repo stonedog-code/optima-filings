@@ -185,8 +185,10 @@ export interface EntityFacts {
    *
    * Scope: it says nothing about 509(a)(3) **supporting organisations**, which
    * the IRS excludes from Form 990-N under a separate and differently-shaped
-   * carve-out. See `docs/prd/private-foundation-fact.md` for why that needs its
-   * own fact and a change to the 990-EZ floor rather than a reuse of this one.
+   * carve-out. See `isSupportingOrganization` below, and
+   * `docs/rule-verification/2026-09-03-990-family-receipts-and-supporting-organisations.md`
+   * for why that needed its own fact and a change to the 990-EZ floor rather
+   * than a reuse of this one.
    */
   isPrivateFoundation?: boolean;
 

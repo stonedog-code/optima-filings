@@ -29,9 +29,7 @@ process.env.OPTIMA_DOCUMENTS_DIR = join(dir, "documents");
 
 // Imported AFTER the env is set: `DB_PATH` is resolved at module load, so a
 // top-level import would open the default database instead of this temporary one.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { allDatedItems } = require("../src/lib/calendar") as typeof import("../src/lib/calendar");
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { getStore } = require("../src/lib/server") as typeof import("../src/lib/server");
 
 const DE_RULE = "us-de-corporation-annual-report";
