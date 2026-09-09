@@ -28,6 +28,7 @@ import * as fixtures from "./fixtures/entities.js";
 import {
   BEQUEST_YEAR_CHARITY,
   DE_CORP,
+  DE_NONPROFIT,
   ENDOWED_NON_SOLICITING_CHARITY,
   EXACTLY_AT_THE_AVERAGE_LINE_CHARITY,
   LEAN_YEAR_AFTER_LARGE_YEARS_CHARITY,
@@ -302,6 +303,52 @@ describe("a Delaware corporation", () => {
       "us-de-llc-annual-tax",
     );
   });
+
+  // The near-miss for the nonprofit rule added in NEH-194. A Delaware c-corp
+  // is the closest entity to a Delaware nonprofit there is — same state, same
+  // 1 March date, same anchor — so if `us-de-nonprofit-annual-report` had been
+  // written with a too-wide `entityTypes`, this is where it shows.
+  it("does not owe the nonprofit report", () => {
+    expect(result.obligations.map((o) => o.ruleId)).not.toContain(
+      "us-de-nonprofit-annual-report",
+    );
+  });
+});
+
+describe("a Delaware nonprofit corporation", () => {
+  const result = evaluate(DE_NONPROFIT, RULES, {
+    asOf: "2026-01-01",
+    horizonMonths: 12,
+    includeDraft: true,
+  });
+
+  it("owes the nonprofit annual report on the fixed March date", () => {
+    // 8 Del. C. 502(a): "Annually on or before March 1, every corporation now
+    // existing or hereafter incorporated under Chapter 1 of this title ...
+    // shall make an annual franchise tax report to the Secretary of State."
+    // "Every" reaches an exempt corporation: 8 Del. C. 501(a) excuses it from
+    // the TAX, not from the REPORT.
+    const report = result.obligations.find(
+      (o) => o.ruleId === "us-de-nonprofit-annual-report",
+    );
+    expect(report?.dueOn).toBe("2026-03-01");
+  });
+
+  it("does NOT owe the stock corporation report and its franchise tax", () => {
+    // The defect this pair exists to catch. A nonprofit swept into
+    // `us-de-corporation-annual-report` would be shown an obligation whose
+    // real cost is the 8 Del. C. 503 franchise tax — minimum $175 or $400,
+    // maximum $200,000 — that 8 Del. C. 501(a) says it does not owe at all.
+    expect(result.obligations.map((o) => o.ruleId)).not.toContain(
+      "us-de-corporation-annual-report",
+    );
+  });
+
+  it("does not owe the LLC tax", () => {
+    expect(result.obligations.map((o) => o.ruleId)).not.toContain(
+      "us-de-llc-annual-tax",
+    );
+  });
 });
 
 describe("an endowed Washington charity that does not solicit", () => {
@@ -482,6 +529,38 @@ describe("what the primary sources actually say", () => {
     // right for earlier years and had gone stale — the exact rot the
     // `lastVerified` discipline exists to catch.
     expect(byId("us-de-llc-annual-tax").fee?.amountMinorUnits).toBe(40_000);
+  });
+
+  it("charges $25 for the Delaware EXEMPT corporation annual report", () => {
+    // 8 Del. C. 391(a)(18): "...a fee of $25 shall be paid by exempt
+    // corporations and a fee of $50 shall be paid by all other corporations."
+    // Recorded where the sibling stock-corporation rule records nothing,
+    // because 8 Del. C. 501(a) exempts this filer from the franchise tax — so
+    // unlike a stock corporation's, this fee IS the whole cost.
+    expect(byId("us-de-nonprofit-annual-report").fee?.amountMinorUnits).toBe(
+      2_500,
+    );
+  });
+
+  it("adds NO beneficial-ownership rule, because domestic entities are exempt", () => {
+    // NEH-194 assessed BOI/FinCEN and deliberately encoded nothing.
+    // 31 CFR 1010.380(c)(1)(i) is "[Reserved]" — the domestic reporting
+    // company definition is GONE — and (c)(1)(ii) reaches only an entity
+    // "Formed under the law of a foreign country". (c)(2)(xxiv) exempts any
+    // "Domestic entity" outright, and (c)(2)(xix) independently exempts any
+    // 501(c) organisation. FinCEN's March 2025 interim final rule was adopted
+    // as final at 91 FR 52528, effective 14 August 2026.
+    //
+    // Every entity this pack serves is formed in WA, OR or DE. None of them is
+    // a reporting company. This asserts the ABSENCE because the failure mode
+    // is someone re-adding the rule from a compliance vendor's page that has
+    // not caught up — telling a charity to file something it need not file.
+    const boi = RULES.filter((rule) =>
+      /fincen|beneficial ownership|1010\.380|corporate transparency/i.test(
+        `${rule.title} ${rule.citation} ${rule.agency}`,
+      ),
+    );
+    expect(boi.map((rule) => rule.id)).toEqual([]);
   });
 
   it("charges $40 to RENEW a Washington charity registration, not the $60 to apply", () => {
