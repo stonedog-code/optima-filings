@@ -108,6 +108,39 @@ export const DE_CORP: EntityFacts = {
   fiscalYearEnd: "12-31",
 };
 
+/**
+ * A Delaware nonprofit, which in Delaware is a nonstock corporation.
+ *
+ * Delaware has no separate nonprofit act, so this entity is incorporated under
+ * the SAME chapter as [[DE_CORP]] and owes the SAME 1 March report under
+ * 8 Del. C. 502(a) — but 8 Del. C. 501(a) exempts it from the franchise tax,
+ * so its cost is the flat $25 report fee of 8 Del. C. 391(a)(18) rather than a
+ * computed tax.
+ *
+ * It is deliberately the near-twin of [[DE_CORP]]: same state, same due date,
+ * same anchor, differing only in entity type. That is what makes the pair able
+ * to catch the specific mistake this rule invites — widening
+ * `us-de-corporation-annual-report`'s `entityTypes` to include nonprofits,
+ * which would silently bill a charity for a franchise tax it does not owe.
+ *
+ * Federal facts are supplied because a 501(c)(3) also owes a 990-family
+ * return; the receipts are under the 990-N ceiling so the federal picture stays
+ * out of the way of what this fixture is for.
+ */
+export const DE_NONPROFIT: EntityFacts = {
+  name: "Example Brandywine Literacy Project",
+  entityTypes: ["501c3", "nonprofit-corp"],
+  formedOn: "2018-11-07",
+  homeJurisdiction: "US-DE",
+  jurisdictions: ["US", "US-DE"],
+  fiscalYearEnd: "12-31",
+  grossRevenueMinorUnits: 3_100_000, // $31,000 — under the 990-N ceiling
+  totalAssetsMinorUnits: 900_000,
+  solicitsCharitableContributions: false,
+  isPrivateFoundation: false,
+  isSupportingOrganization: false,
+};
+
 /** Registered in Delaware and foreign-qualified in Washington. */
 export const MULTI_STATE_CORP: EntityFacts = {
   name: "Example Rainier Analytics Inc.",
