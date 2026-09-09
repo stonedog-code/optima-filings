@@ -62,11 +62,17 @@ export {
 } from "./annualReturn.js";
 export type { AnnualExemptOrganizationReturn } from "./annualReturn.js";
 
-export { isConditionGroup } from "./rule.js";
+export { isConditionGroup, isExactFee } from "./rule.js";
+
+// Fee presentation. In the engine because four surfaces render the same
+// three-way branch and a minimum shown as a price is the defect NEH-403 removes.
+export { formatMinorUnits, feeAmountText, feeExplanation } from "./fee.js";
 export type {
   Cadence,
   ConditionOperator,
   Fee,
+  ExactFee,
+  InexactFee,
   Rule,
   RuleCondition,
   RuleConditionGroup,

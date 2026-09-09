@@ -22,9 +22,10 @@ import {
 } from "./holidays.js";
 import type { CalendarDate, ConditionableFact, EntityFacts } from "./facts.js";
 import { deriveFactValues, reportableInputsFor, type FactValues } from "./derived.js";
-import { isConditionGroup } from "./rule.js";
+import { isConditionGroup, isExactFee } from "./rule.js";
 import type {
   Cadence,
+  InexactFee,
   Rule,
   RuleCondition,
   RuleConditionGroup,
@@ -51,8 +52,26 @@ export interface RuleProvenance {
   title: string;
   agency: string;
   jurisdiction: string;
+  /**
+   * The fee, when it is ONE number. Undefined when the cost is a range
+   * (`feeRange`) or was never established at all.
+   *
+   * **It is never populated from a range**, and that is deliberate: a consumer
+   * written before ranges existed reads this field and would render a minimum
+   * as though it were the price. Collapsing "$175 to $200,000" into "$175" is
+   * the same defect this whole change removes, one layer down.
+   */
   feeMinorUnits?: number;
   currency?: "USD";
+  /**
+   * The fee when it is NOT one number — bounds plus the reason, to be shown to
+   * the filer. See `InexactFee`.
+   *
+   * A consumer that ignores this field shows no fee, which is what it showed
+   * before. One that reads it can say "$20 to $60, depending on a certification
+   * you make" instead of an em dash.
+   */
+  feeRange?: InexactFee;
   form?: string;
   citation: string;
   citationUrl?: string;
@@ -130,11 +149,14 @@ function provenanceOf(rule: Rule): RuleProvenance {
     title: rule.title,
     agency: rule.agency,
     jurisdiction: rule.jurisdiction,
+    // Exact and inexact fees land in DIFFERENT fields. A consumer that only
+    // knows `feeMinorUnits` sees nothing for a range, which is the same thing
+    // it saw when these rules carried no fee at all — rather than a minimum
+    // presented as the price.
     ...(rule.fee
-      ? {
-          feeMinorUnits: rule.fee.amountMinorUnits,
-          currency: rule.fee.currency,
-        }
+      ? isExactFee(rule.fee)
+        ? { feeMinorUnits: rule.fee.amountMinorUnits, currency: rule.fee.currency }
+        : { feeRange: rule.fee, currency: rule.fee.currency }
       : {}),
     ...(rule.form ? { form: rule.form } : {}),
     citation: rule.citation,

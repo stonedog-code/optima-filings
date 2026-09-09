@@ -244,23 +244,80 @@
         }
       ]
     },
-    "fee": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "amountMinorUnits",
-        "currency"
-      ],
-      "properties": {
-        "amountMinorUnits": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "INTEGER MINOR UNITS. 6000 is $60.00. Never a float \u2014 a rounding error in a fee is a support ticket and a credibility hit."
+  "fee": {
+      "description": "What the filing costs. TWO SHAPES, and choosing between them is a claim about how well the cost is known. EXACT is one number every filer pays. INEXACT is a range with a required explanation, for a cost computed per filer or turning on something outside the fact model \u2014 Delaware's franchise tax is computed per corporation between $175 and $200,000, and no single number is honest. A rule may also carry NO fee, which says the cost was never established. NEVER invent a flat number to fill this field: showing $50 for a filing that costs $175 to $200,000 sends someone to the wrong budget, and that was this field's first real defect (NEH-403).",
+      "oneOf": [
+        {
+          "title": "Exact fee",
+          "description": "One number the agency charges every filer of this form. Use this whenever it is true.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "amountMinorUnits",
+            "currency"
+          ],
+          "properties": {
+            "amountMinorUnits": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "INTEGER MINOR UNITS. 6000 is $60.00. Never a float \u2014 a rounding error in a fee is a support ticket and a credibility hit."
+            },
+            "currency": {
+              "const": "USD"
+            }
+          }
         },
-        "currency": {
-          "const": "USD"
+        {
+          "title": "Inexact fee",
+          "description": "A cost that is not one number, stated as bounds plus a required explanation. At least one bound must be given; both is better. An open-ended range is honest \u2014 'at least $175' with no maximum says more than silence does.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "basis",
+            "currency",
+            "explanation"
+          ],
+          "anyOf": [
+            {
+              "required": [
+                "minimumMinorUnits"
+              ]
+            },
+            {
+              "required": [
+                "maximumMinorUnits"
+              ]
+            }
+          ],
+          "properties": {
+            "basis": {
+              "enum": [
+                "computed",
+                "conditional"
+              ],
+              "description": "WHY the cost is not one number, because the two want different things of a reader. 'computed' means the agency calculates it from the filer's own figures and only they can arrive at it \u2014 Delaware's franchise tax. 'conditional' means it is one of a few fixed amounts and which one depends on something the entity does or declares \u2014 Washington's annual report is $20 or $60 depending on a certification the corporation makes. A reader can act on 'conditional' by finding out which case they are in; 'computed' sends them to the agency's calculator."
+            },
+            "minimumMinorUnits": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "INTEGER MINOR UNITS. The least any filer of this form pays. Omit only if genuinely unbounded below."
+            },
+            "maximumMinorUnits": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "INTEGER MINOR UNITS. The most any filer pays. Omit when the statute sets no ceiling \u2014 an absent maximum is a fact about the law, not a gap in the record."
+            },
+            "explanation": {
+              "type": "string",
+              "minLength": 1,
+              "description": "One or two sentences a filer can act on, shown to them verbatim. REQUIRED, and that is the point of this shape: a range with no reason is barely better than the wrong flat number it replaces. Say what varies and where they can settle it \u2014 'the franchise tax is computed from authorised shares or assumed par value; Delaware's calculator gives your figure'. Write it for the filer, not for a maintainer: no issue ids, no branch names, nothing that only makes sense with repository access."
+            },
+            "currency": {
+              "const": "USD"
+            }
+          }
         }
-      }
+      ]
     },
     "conditions": {
       "type": "array",

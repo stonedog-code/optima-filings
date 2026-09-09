@@ -55,8 +55,31 @@ for (const { rule, file } of rules) {
   const where = relative(packageRoot, file);
 
   if (!validateSchema(rule)) {
+    // `fee` is a oneOf, and Ajv reports EVERY branch it failed — so a rule that
+    // simply forgot the explanation on a range is told it "must have required
+    // property 'amountMinorUnits'", which names the wrong shape entirely. The
+    // audience for this file is a CPA authoring a rule by hand, and four
+    // contradictory lines about a field they got nearly right is how they
+    // conclude the tool is broken. Collapse them into one that says what the
+    // two shapes are.
+    const feeErrors = (validateSchema.errors ?? []).filter((e) =>
+      e.instancePath.startsWith("/fee"),
+    );
     for (const error of validateSchema.errors ?? []) {
+      if (error.instancePath.startsWith("/fee")) continue;
       errors.push(`${where}: ${error.instancePath || "/"} ${error.message}`);
+    }
+    if (feeErrors.length > 0) {
+      errors.push(
+        `${where}: /fee does not match either fee shape. A fee is EITHER exact — ` +
+          `{"amountMinorUnits": 6000, "currency": "USD"} — OR inexact, for a cost ` +
+          `that is computed per filer or turns on something we do not hold: ` +
+          `{"basis": "computed"|"conditional", "minimumMinorUnits" and/or ` +
+          `"maximumMinorUnits", "explanation": "why it varies and where to settle it", ` +
+          `"currency": "USD"}. The explanation is required and may not be empty. ` +
+          `Never mix the two, and never invent a flat number to fill the field — ` +
+          `omit the fee entirely if nobody has established it.`,
+      );
     }
     // Later checks assume a well-formed rule; reporting them too would bury
     // the schema error under noise it caused.

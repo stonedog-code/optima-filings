@@ -18,9 +18,11 @@ import {
   isAnnualExemptOrganizationReturn,
 } from "../src/annualReturn.js";
 import { evaluate } from "../src/evaluate.js";
+import { feeAmountText } from "../src/fee.js";
 import { CONDITIONABLE_FACTS } from "../src/facts.js";
 import type { EntityFacts } from "../src/facts.js";
-import type { Rule } from "../src/rule.js";
+import { isExactFee } from "../src/rule.js";
+import type { InexactFee, Rule } from "../src/rule.js";
 // Imported as a namespace as well as by name, so the 990-family invariant at
 // the bottom can iterate EVERY fixture rather than a hand-maintained list that
 // the next fixture would be missing from.
@@ -75,6 +77,72 @@ describe("the pack loads", () => {
     // Duplicates are legitimate only across effective windows, and the
     // validator checks that separately. None of the seed rules is superseded.
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe("every fee in the pack is either exact or explained", () => {
+  // A fee that is neither is the NEH-403 defect: `us-de-corporation-annual-report`
+  // shipped `$50` — the report fee alone — for a filing whose real cost runs
+  // from $225 to $250,050, so a customer budgeting from the screen was wrong by
+  // up to $249,825. The schema now refuses that shape; these assert the SHIPPED
+  // pack against it, which is a different question from whether the schema could.
+
+  const inexact = RULES.filter(
+    (rule) => rule.fee !== undefined && !isExactFee(rule.fee),
+  );
+
+  it("examines every rule that has a fee at all", () => {
+    // The input-set size, printed rather than assumed. A guard over an empty
+    // set passes for the wrong reason, and this file has no other way to say
+    // that the pack still contains the rules it is checking.
+    const withFee = RULES.filter((rule) => rule.fee !== undefined);
+    expect(RULES.length).toBeGreaterThanOrEqual(14);
+    expect(withFee.length).toBeGreaterThan(0);
+    expect(inexact.length).toBeGreaterThan(0);
+  });
+
+  it.each(inexact.map((rule) => [rule.id, rule] as const))(
+    "%s states why its fee is a range",
+    (_id, rule) => {
+      const fee = rule.fee as InexactFee;
+      expect(fee.explanation.trim().length).toBeGreaterThan(20);
+      // At least one bound, or the range says nothing at all. The schema
+      // requires this too; asserted here because the schema is one file a
+      // future edit could loosen without anything else noticing.
+      expect(
+        fee.minimumMinorUnits !== undefined || fee.maximumMinorUnits !== undefined,
+      ).toBe(true);
+    },
+  );
+
+  it.each(inexact.map((rule) => [rule.id, rule] as const))(
+    "%s explains itself to a FILER, not to a maintainer",
+    (_id, rule) => {
+      // The explanation is user-facing text on a public product, so it is
+      // governed by the same rule as the terms page: no issue ids, no tracker
+      // links, no repository detail. Someone reading it has no repository.
+      const fee = rule.fee as InexactFee;
+      expect(fee.explanation).not.toMatch(/NEH-\d+|linear\.app|github\.com/i);
+    },
+  );
+
+  it("never lets a minimum reach a consumer as though it were the price", () => {
+    // Asserted on the OUTPUT of `evaluate`, not on the rule file, because the
+    // projection is where it would go wrong. `feeMinorUnits` is the field every
+    // consumer written before ranges existed reads, and it must stay EMPTY for
+    // a range — a Delaware corporation whose real cost starts at $225 must not
+    // be handed "$225" as its fee.
+    const { obligations } = evaluate(DE_CORP, RULES, {
+      asOf: "2026-01-01",
+      horizonMonths: 12,
+    });
+    const de = obligations.find((o) => o.ruleId === "us-de-corporation-annual-report");
+
+    expect(de).toBeDefined();
+    expect(de!.feeMinorUnits).toBeUndefined();
+    expect(de!.feeRange?.minimumMinorUnits).toBe(22_500);
+    expect(de!.feeRange?.maximumMinorUnits).toBe(25_005_000);
+    expect(feeAmountText(de!)).toBe("$225.00 – $250,050.00");
   });
 });
 
