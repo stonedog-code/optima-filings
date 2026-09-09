@@ -102,6 +102,14 @@ export function parseEntityForm(form: FormData): ParseResult {
 
   const isPrivateFoundation = parseTriState(text("isPrivateFoundation"));
   const isSupportingOrganization = parseTriState(text("isSupportingOrganization"));
+  // Tri-state for the same reason the two above are: both readings of an
+  // unanswered box are wrong here. Read as "no", the Washington volunteer
+  // exemption is denied to every organisation that has not been asked; read as
+  // "yes", it is granted to them. Only the third state is honest.
+  const allFundraisingUnpaid = parseTriState(text("allFundraisingUnpaid"));
+  const assetsOrIncomeInureToInsiders = parseTriState(
+    text("assetsOrIncomeInureToInsiders"),
+  );
 
   const grossRevenueMinorUnits = dollarsToMinorUnits(text("grossRevenue"));
   const grossRevenuePriorYear1MinorUnits = dollarsToMinorUnits(
@@ -112,6 +120,12 @@ export function parseEntityForm(form: FormData): ParseResult {
   );
   const totalAssetsMinorUnits = dollarsToMinorUnits(text("totalAssets"));
   const charitableAssetsMinorUnits = dollarsToMinorUnits(text("charitableAssets"));
+  const incomeProducingCharitableAssetsMinorUnits = dollarsToMinorUnits(
+    text("incomeProducingCharitableAssets"),
+  );
+  const contributionsRaisedMinorUnits = dollarsToMinorUnits(
+    text("contributionsRaised"),
+  );
 
   return {
     ok: true,
@@ -140,11 +154,29 @@ export function parseEntityForm(form: FormData): ParseResult {
       ...(charitableAssetsMinorUnits !== undefined
         ? { charitableAssetsMinorUnits }
         : {}),
+      // A DIFFERENT figure from the line above, not a share of it computed
+      // here. Washington's charitable-trust threshold is written against
+      // assets "invested for income-producing purposes", and only the
+      // organisation knows which of its holdings those are.
+      ...(incomeProducingCharitableAssetsMinorUnits !== undefined
+        ? { incomeProducingCharitableAssetsMinorUnits }
+        : {}),
+      // Omitted, not zeroed, when blank - and the direction matters more here
+      // than elsewhere. A 0 would read as "raised nothing", which is BELOW the
+      // $50,000 line and therefore an answer that helps grant an exemption; an
+      // absent key leaves the rule undecided and asks.
+      ...(contributionsRaisedMinorUnits !== undefined
+        ? { contributionsRaisedMinorUnits }
+        : {}),
       // An unticked box is genuinely "no", not "unknown" — the checkbox is
       // always present in the submission.
       solicitsCharitableContributions: form.get("solicits") === "true",
       ...(isPrivateFoundation === undefined ? {} : { isPrivateFoundation }),
       ...(isSupportingOrganization === undefined ? {} : { isSupportingOrganization }),
+      ...(allFundraisingUnpaid === undefined ? {} : { allFundraisingUnpaid }),
+      ...(assetsOrIncomeInureToInsiders === undefined
+        ? {}
+        : { assetsOrIncomeInureToInsiders }),
     },
   };
 }

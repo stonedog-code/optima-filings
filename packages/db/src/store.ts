@@ -35,6 +35,10 @@ interface EntityRow {
   is_supporting_organization: number | null;
   gross_revenue_prior_year_1_minor_units: number | null;
   gross_revenue_prior_year_2_minor_units: number | null;
+  contributions_raised_minor_units: number | null;
+  all_fundraising_unpaid: number | null;
+  assets_or_income_inure_to_insiders: number | null;
+  income_producing_charitable_assets_minor_units: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -114,6 +118,47 @@ function toFacts(row: EntityRow): StoredEntity {
       ? {
           grossRevenuePriorYear2MinorUnits:
             row.gross_revenue_prior_year_2_minor_units as number,
+        }
+      : {}),
+    // A DISTINCT figure from `grossRevenueMinorUnits`, never a copy of it. Only
+    // money obtained by asking counts toward the RCW 19.09.081(1) exemption, so
+    // collapsing the two here would deny the exemption to every organisation
+    // with program-service revenue - at the layer furthest from anyone who
+    // would notice.
+    //
+    // NULL becomes an ABSENT KEY and a genuine 0 stays 0: an organisation that
+    // raised nothing this year has told us something, and an organisation that
+    // has not been asked has not.
+    ...("v" in optional(row.contributions_raised_minor_units)
+      ? {
+          contributionsRaisedMinorUnits:
+            row.contributions_raised_minor_units as number,
+        }
+      : {}),
+    // Three states again, and here BOTH collapses are harmful: reading an
+    // unanswered question as `false` denies the volunteer exemption to every
+    // pre-existing row, and reading it as `true` grants it to them. An absent
+    // key leaves the rule undecided with the question attached.
+    ...(row.all_fundraising_unpaid === null
+      ? {}
+      : { allFundraisingUnpaid: row.all_fundraising_unpaid === 1 }),
+    // Stored positively: 1 means inurement exists, so the organisation is
+    // outside the exemption and registers. Read the sign before comparing this
+    // to the statute, which phrases the same test as "no part ... inures".
+    ...(row.assets_or_income_inure_to_insiders === null
+      ? {}
+      : {
+          assetsOrIncomeInureToInsiders:
+            row.assets_or_income_inure_to_insiders === 1,
+        }),
+    // The narrower of the two asset figures, and never derived from the wider
+    // one. An organisation holding $4M of conservation easements holds $0
+    // invested for income, and inferring one from the other here would restore
+    // exactly the over-trigger this column was added to remove.
+    ...("v" in optional(row.income_producing_charitable_assets_minor_units)
+      ? {
+          incomeProducingCharitableAssetsMinorUnits:
+            row.income_producing_charitable_assets_minor_units as number,
         }
       : {}),
     createdAt: row.created_at,
@@ -218,8 +263,12 @@ export class EntityStore {
            is_supporting_organization,
            gross_revenue_prior_year_1_minor_units,
            gross_revenue_prior_year_2_minor_units,
+           contributions_raised_minor_units,
+           all_fundraising_unpaid,
+           assets_or_income_inure_to_insiders,
+           income_producing_charitable_assets_minor_units,
            created_at, updated_at
-         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       )
       .run(
         id,
@@ -253,6 +302,20 @@ export class EntityStore {
             : 0,
         facts.grossRevenuePriorYear1MinorUnits ?? null,
         facts.grossRevenuePriorYear2MinorUnits ?? null,
+        // `?? null`, never `|| null`: an organisation that raised nothing is a
+        // real answer and `||` would rewrite it as "nobody has been asked".
+        facts.contributionsRaisedMinorUnits ?? null,
+        facts.allFundraisingUnpaid === undefined
+          ? null
+          : facts.allFundraisingUnpaid
+            ? 1
+            : 0,
+        facts.assetsOrIncomeInureToInsiders === undefined
+          ? null
+          : facts.assetsOrIncomeInureToInsiders
+            ? 1
+            : 0,
+        facts.incomeProducingCharitableAssetsMinorUnits ?? null,
         timestamp,
         timestamp,
       );
@@ -292,6 +355,10 @@ export class EntityStore {
            is_supporting_organization = ?,
            gross_revenue_prior_year_1_minor_units = ?,
            gross_revenue_prior_year_2_minor_units = ?,
+           contributions_raised_minor_units = ?,
+           all_fundraising_unpaid = ?,
+           assets_or_income_inure_to_insiders = ?,
+           income_producing_charitable_assets_minor_units = ?,
            updated_at = ?
          WHERE id = ?`,
       )
@@ -327,6 +394,21 @@ export class EntityStore {
             : 0,
         facts.grossRevenuePriorYear1MinorUnits ?? null,
         facts.grossRevenuePriorYear2MinorUnits ?? null,
+        // Present in `update()` as well as in `create()`, and that pairing is
+        // what migration 7 was about: an UPDATE that omits a column leaves the
+        // previous value in place, so taking an answer back would not take.
+        facts.contributionsRaisedMinorUnits ?? null,
+        facts.allFundraisingUnpaid === undefined
+          ? null
+          : facts.allFundraisingUnpaid
+            ? 1
+            : 0,
+        facts.assetsOrIncomeInureToInsiders === undefined
+          ? null
+          : facts.assetsOrIncomeInureToInsiders
+            ? 1
+            : 0,
+        facts.incomeProducingCharitableAssetsMinorUnits ?? null,
         this.now(),
         id,
       );

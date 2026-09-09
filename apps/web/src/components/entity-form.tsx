@@ -253,6 +253,29 @@ export function EntityFormFields({ entity }: { entity?: StoredEntity }) {
       </div>
 
       <div className={fieldClass}>
+        <StyledFormLabel htmlFor="entity-contributions-raised" optional>
+          Contributions raised
+        </StyledFormLabel>
+        <StyledInputText
+          id="entity-contributions-raised"
+          type="number"
+          name="contributionsRaised"
+          min="0"
+          step="0.01"
+          defaultValue={toDollars(entity?.contributionsRaisedMinorUnits)}
+          aria-describedby="entity-contributions-raised-hint"
+        />
+        <span className={hintClass} id="entity-contributions-raised-hint">
+          Money you raised by <strong>asking</strong> — gifts, donations, grants
+          and pledges — before deducting what it cost to raise. <strong>Not the
+          same as gross revenue</strong>: ticket sales, tuition, fees, contracts
+          and investment income are revenue you earned, not money you raised.
+          Washington exempts a charity raising under $50,000 a year from
+          registration, but only if it also runs entirely on volunteers.
+        </span>
+      </div>
+
+      <div className={fieldClass}>
         <StyledFormLabel htmlFor="entity-charitable-assets" optional>
           Charitable assets
         </StyledFormLabel>
@@ -270,6 +293,33 @@ export function EntityFormFields({ entity }: { entity?: StoredEntity }) {
           total assets</strong>. Several states require charity registration
           above a threshold on this figure alone, even for an organisation that
           never asks the public for money.
+        </span>
+      </div>
+
+      <div className={fieldClass}>
+        <StyledFormLabel htmlFor="entity-income-producing-charitable-assets" optional>
+          Charitable assets invested for income
+        </StyledFormLabel>
+        <StyledInputText
+          id="entity-income-producing-charitable-assets"
+          type="number"
+          name="incomeProducingCharitableAssets"
+          min="0"
+          step="0.01"
+          defaultValue={toDollars(entity?.incomeProducingCharitableAssetsMinorUnits)}
+          aria-describedby="entity-income-producing-charitable-assets-hint"
+        />
+        <span
+          className={hintClass}
+          id="entity-income-producing-charitable-assets-hint"
+        >
+          The part of the figure above that is <strong>invested to produce
+          income</strong> — an endowment, a reserve, a portfolio, property held
+          as an investment. Property in direct charitable use does not count,
+          however valuable: a museum's collection, a food bank's warehouse, land
+          held under a conservation easement. Washington's charitable-trust
+          registration turns on this narrower figure, so an organisation whose
+          assets are all in program use may owe nothing here.
         </span>
       </div>
 
@@ -335,6 +385,65 @@ export function EntityFormFields({ entity }: { entity?: StoredEntity }) {
           small it is, and cannot use the 990-N e-Postcard.{" "}
           <strong>Leave it blank if you do not know</strong> — the 990 family is
           then reported as “cannot tell yet” rather than being decided for you.
+        </span>
+      </div>
+
+      <div className={fieldClass}>
+        {/*
+          A select rather than a checkbox, and here BOTH readings of an unticked
+          box are wrong rather than one. Read as "no", every organisation that
+          predates this question is denied the Washington volunteer exemption
+          and told to register - the over-filing the question exists to remove.
+          Read as "yes", every one of them is granted it - under-filing. The
+          unanswered state has to survive the form.
+        */}
+        <StyledFormLabel htmlFor="entity-all-fundraising-unpaid" optional>
+          Run entirely by volunteers
+        </StyledFormLabel>
+        <StyledInputSelect
+          id="entity-all-fundraising-unpaid"
+          name="allFundraisingUnpaid"
+          defaultValue={triStateValue(entity?.allFundraisingUnpaid)}
+          aria-describedby="entity-all-fundraising-unpaid-hint"
+          options={[
+            { value: "", label: "I do not know yet" },
+            { value: "no", label: "No — somebody is paid" },
+            { value: "yes", label: "Yes — everyone is unpaid" },
+          ]}
+        />
+        <span className={hintClass} id="entity-all-fundraising-unpaid-hint">
+          <strong>All</strong> the organisation's work, not only its
+          fundraising. One paid part-time bookkeeper is enough for this to be
+          “no”, even if every dollar is raised by volunteers. Reimbursing a
+          volunteer's expenses is not pay. Washington exempts a charity from
+          registration only when this and the contributions figure above{" "}
+          <em>both</em> qualify.
+        </span>
+      </div>
+
+      <div className={fieldClass}>
+        <StyledFormLabel htmlFor="entity-inurement" optional>
+          Payments to officers, directors, members or trustees
+        </StyledFormLabel>
+        <StyledInputSelect
+          id="entity-inurement"
+          name="assetsOrIncomeInureToInsiders"
+          defaultValue={triStateValue(entity?.assetsOrIncomeInureToInsiders)}
+          aria-describedby="entity-inurement-hint"
+          options={[
+            { value: "", label: "I do not know yet" },
+            { value: "no", label: "No" },
+            { value: "yes", label: "Yes — some goes to an insider" },
+          ]}
+        />
+        <span className={hintClass} id="entity-inurement-hint">
+          Whether any of the organisation's money or property goes to an
+          officer, director, member or trustee. A payment made to someone{" "}
+          <strong>on the same terms as everyone else the charity helps</strong>{" "}
+          does not count — a trustee's child winning a scholarship on the open
+          criteria is not this. Only asked because Washington's exemption for
+          small volunteer-run charities requires it; it has no effect unless the
+          other two answers already place you inside that exemption.
         </span>
       </div>
 

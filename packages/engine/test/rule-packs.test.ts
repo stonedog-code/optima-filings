@@ -160,6 +160,34 @@ describe("schema and TypeScript agree", () => {
     expect([...schemaFacts].sort()).toEqual([...CONDITIONABLE_FACTS].sort());
   });
 
+  it("agrees with the VALIDATOR's copy of the list too, which is a third copy", () => {
+    // `packages/rules/scripts/validate.mjs` keeps its own literal array,
+    // deliberately: it runs before anything is built and cannot import from
+    // the engine's dist. Its comment said "the parity test in the engine suite
+    // fails if the two ever drift" — and until 2026-09-09 no such test existed.
+    // The engine suite compared the SCHEMA to `CONDITIONABLE_FACTS` and never
+    // looked at the validator at all, so the claim was false in the reassuring
+    // direction: three copies, two of them checked.
+    //
+    // Adding a fact to the engine and forgetting the validator does fail
+    // loudly, because the validator then rejects the rule. Adding one to the
+    // VALIDATOR and forgetting the engine does not: the rule validates and
+    // then matches nothing, forever, which is the silent shape.
+    const source = readFileSync(
+      join(rulesRoot, "scripts", "validate.mjs"),
+      "utf8",
+    );
+    const block = /const CONDITIONABLE_FACTS = \[([\s\S]*?)\];/.exec(source);
+    // Non-vacuity: a regex that stopped matching would make every assertion
+    // below compare two empty arrays and pass.
+    expect(block).not.toBeNull();
+    const validatorFacts = [...(block?.[1] ?? "").matchAll(/"([A-Za-z0-9_]+)"/g)].map(
+      (m) => m[1],
+    );
+    expect(validatorFacts.length).toBe(CONDITIONABLE_FACTS.length);
+    expect([...validatorFacts].sort()).toEqual([...CONDITIONABLE_FACTS].sort());
+  });
+
   it("uses the same condition definition for leaves and for anyOf members", () => {
     // If the group branch stopped $ref-ing the shared definition, a fact could
     // become valid inside a group and invalid outside it — and that drift would
@@ -500,9 +528,15 @@ describe("an endowed Washington charity that does not solicit", () => {
     // Guards the distinction the fact model exists to preserve: an
     // organisation with big non-charitable holdings and little charitable
     // property must NOT be pushed into registering.
+    //
+    // Both charitable figures are overridden, because since 2026-09-09 the rule
+    // tests the NARROWER one. Leaving the invested figure at the fixture's $8M
+    // would have kept this test green while measuring nothing about total
+    // assets at all.
     const nonCharitable = {
       ...ENDOWED_NON_SOLICITING_CHARITY,
       charitableAssetsMinorUnits: 1_000_00, // $1,000 — well under the line
+      incomeProducingCharitableAssetsMinorUnits: 1_000_00,
     };
     const narrow = evaluate(nonCharitable, RULES, {
       asOf: "2026-01-01",
@@ -526,6 +560,7 @@ describe("an endowed Washington charity that does not solicit", () => {
     const exactly = {
       ...ENDOWED_NON_SOLICITING_CHARITY,
       charitableAssetsMinorUnits: 250_000_00,
+      incomeProducingCharitableAssetsMinorUnits: 250_000_00,
     };
     const atLine = evaluate(exactly, RULES, {
       asOf: "2026-01-01",
@@ -540,9 +575,15 @@ describe("an endowed Washington charity that does not solicit", () => {
   it("IS caught one cent over", () => {
     // The other side of the same boundary — without this, a rule that never
     // fired at all would pass the assertion above.
+    //
+    // The INVESTED figure is the one that has to move. Overriding only
+    // `charitableAssetsMinorUnits` left the fixture's $8M invested figure in
+    // place, so this test passed on a value it was not varying — green under
+    // both the right model and the wrong one, which is no test at all.
     const overLine = {
       ...ENDOWED_NON_SOLICITING_CHARITY,
       charitableAssetsMinorUnits: 250_000_00 + 1,
+      incomeProducingCharitableAssetsMinorUnits: 250_000_00 + 1,
     };
     const over = evaluate(overLine, RULES, {
       asOf: "2026-01-01",
@@ -1621,5 +1662,222 @@ describe("the annual exempt-organisation returns", () => {
     // nobody could check.
     expect(AUTOMATIC_REVOCATION.consecutiveYears).toBe(3);
     expect(AUTOMATIC_REVOCATION.citation).toContain("6033(j)");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// RCW 19.09.081(1) and WAC 434-120-305 — the two Washington charity rules that
+// used to test something adjacent to what their regulation says (NEH-413).
+// ---------------------------------------------------------------------------
+
+describe("the RCW 19.09.081(1) volunteer exemption", () => {
+  const SOLICITATION = "us-wa-charitable-solicitation-registration";
+
+  /** Every id this entity is told it owes, drafts included. */
+  const owed = (entity: EntityFacts): string[] =>
+    evaluate(entity, RULES, {
+      asOf: "2026-01-01",
+      horizonMonths: 12,
+      includeDraft: true,
+    }).obligations.map((o) => o.ruleId);
+
+  const undecided = (entity: EntityFacts) =>
+    evaluate(entity, RULES, {
+      asOf: "2026-01-01",
+      horizonMonths: 12,
+      includeDraft: true,
+    }).indeterminate;
+
+  it("is non-vacuous: the pack really carries the rule under test", () => {
+    // Every "does not owe" assertion below would pass just as happily against a
+    // pack that had dropped this rule, or marked it draft while these calls
+    // include drafts. Say the size of the set first.
+    const matching = RULES.filter((rule) => rule.id === SOLICITATION);
+    expect(matching).toHaveLength(1);
+    expect(matching[0]?.status).toBe("active");
+    // And it still fires for somebody, or the exemption assertions prove
+    // nothing about the exemption.
+    expect(owed(fixtures.WA_LARGE_CHARITY)).toContain(SOLICITATION);
+  });
+
+  it("EXEMPTS a small all-volunteer charity that takes nothing out", () => {
+    // The false positive the ticket was filed for, and the assertion that
+    // changes answer between the old model and the new one: this organisation
+    // solicits, and under the pre-2026-09-09 rule that single condition was the
+    // whole test, so it was told to register and pay $40.
+    expect(owed(fixtures.WA_VOLUNTEER_EXEMPT_CHARITY)).not.toContain(SOLICITATION);
+  });
+
+  it("decides that exemption rather than dodging it", () => {
+    // "Exempt" and "we could not tell" render very differently to a user, and
+    // only one of them is an answer. All three limbs are supplied here, so the
+    // rule must come back known-false, not undecided.
+    expect(undecided(fixtures.WA_VOLUNTEER_EXEMPT_CHARITY).map((r) => r.ruleId)).not.toContain(
+      SOLICITATION,
+    );
+  });
+
+  it("still registers a small charity that pays somebody", () => {
+    // The second limb, alone. WA_SMALL_CHARITY raises $38,000 — under the money
+    // line — and employs a part-time coordinator. RCW 19.09.081(1) is a
+    // conjunction, so being small is not enough.
+    expect(owed(fixtures.WA_SMALL_CHARITY)).toContain(SOLICITATION);
+  });
+
+  it("still registers a small all-volunteer charity that pays an insider", () => {
+    // The THIRD limb, alone, and the reason it is modelled at all. This entity
+    // is identical to the exempt one but for that answer. Drop the limb and
+    // this assertion flips — the pack would exempt an organisation the statute
+    // does not, which is under-filing on our own initiative.
+    expect(owed(fixtures.WA_VOLUNTEER_CHARITY_WITH_INUREMENT)).toContain(
+      SOLICITATION,
+    );
+  });
+
+  describe("the $50,000 boundary", () => {
+    it("does NOT exempt at exactly $50,000, because the statute says 'less than'", () => {
+      // RCW 19.09.081(1): "raising less than fifty thousand dollars in any
+      // accounting year". So the exemption stops at $49,999.99 and the rule's
+      // money limb is `gte`. Note the SIBLING rule uses `gt` at its threshold
+      // because WAC 434-120-305 says "exceeding" — two Washington charity
+      // rules, two operators, both right, and nothing but a fixture will keep
+      // them from being "tidied" into agreement.
+      expect(owed(fixtures.WA_VOLUNTEER_CHARITY_AT_FIFTY_THOUSAND)).toContain(
+        SOLICITATION,
+      );
+    });
+
+    it("DOES exempt one cent under", () => {
+      // The other side of the same line. Without this the assertion above is
+      // satisfied by a rule that fires for everyone, which is precisely what
+      // the old rule did.
+      expect(owed(fixtures.WA_VOLUNTEER_CHARITY_ONE_CENT_UNDER)).not.toContain(
+        SOLICITATION,
+      );
+    });
+  });
+
+  it("reports an unanswered third limb as a question, not as an answer", () => {
+    // Two limbs point at the exemption and the third is unknown, so the rule is
+    // genuinely undecidable. It must be REPORTED — a silent skip would read as
+    // "you owe nothing", which is the exemption granted without evidence.
+    const rows = undecided(fixtures.WA_VOLUNTEER_CHARITY_UNANSWERED_INUREMENT);
+    const row = rows.find((r) => r.ruleId === SOLICITATION);
+    expect(row).toBeDefined();
+    // And it names the ONE fact that would settle it, rather than every fact
+    // the rule mentions — the entity has answered the other two.
+    expect(row?.missingFacts).toEqual(["assetsOrIncomeInureToInsiders"]);
+    // Not decided either way while the question stands.
+    expect(owed(fixtures.WA_VOLUNTEER_CHARITY_UNANSWERED_INUREMENT)).not.toContain(
+      SOLICITATION,
+    );
+  });
+
+  it("never asks the volunteer questions of an organisation over the money line", () => {
+    // The evaluator's known-true-beats-unknown precedence, load-bearing here
+    // rather than incidental: a $2.9M charity is not asked whether all its work
+    // is unpaid, because the answer cannot change the outcome. Without that,
+    // adding this exemption would have put two new questions in front of every
+    // large charity in the product.
+    const bigButUnasked: EntityFacts = {
+      ...fixtures.WA_LARGE_CHARITY,
+      allFundraisingUnpaid: undefined as unknown as boolean,
+    };
+    delete (bigButUnasked as Partial<EntityFacts>).allFundraisingUnpaid;
+    delete (bigButUnasked as Partial<EntityFacts>).assetsOrIncomeInureToInsiders;
+    expect(owed(bigButUnasked)).toContain(SOLICITATION);
+    expect(undecided(bigButUnasked).map((r) => r.ruleId)).not.toContain(
+      SOLICITATION,
+    );
+  });
+
+  it("leaves a non-soliciting charity alone whatever the exemption says", () => {
+    // The top-level AND short-circuits on a known-false first condition, so an
+    // organisation that does not solicit is never asked any of this.
+    expect(owed(fixtures.WA_PROGRAM_PROPERTY_CHARITY)).not.toContain(SOLICITATION);
+    expect(undecided(fixtures.WA_PROGRAM_PROPERTY_CHARITY).map((r) => r.ruleId)).not.toContain(
+      SOLICITATION,
+    );
+  });
+});
+
+describe("WAC 434-120-305 tests assets INVESTED FOR INCOME, not all charitable assets", () => {
+  const TRUST = "us-wa-charitable-trust-registration";
+
+  const owed = (entity: EntityFacts): string[] =>
+    evaluate(entity, RULES, {
+      asOf: "2026-01-01",
+      horizonMonths: 12,
+      includeDraft: true,
+    }).obligations.map((o) => o.ruleId);
+
+  it("is non-vacuous: the rule is in the pack and does fire", () => {
+    expect(RULES.filter((r) => r.id === TRUST)).toHaveLength(1);
+    expect(owed(fixtures.WA_PROGRAM_PROPERTY_CHARITY_WITH_ENDOWMENT)).toContain(
+      TRUST,
+    );
+  });
+
+  it("does not register a land trust holding $4.15M of program property", () => {
+    // The over-trigger the ticket described, as an assertion that decides
+    // differently under the two models. Under the old rule this organisation
+    // held $4,150,000 against a $250,000 line and was sent a registration and a
+    // $25 fee; WAC 434-120-305 reaches only assets "invested for
+    // income-producing purposes", and it has none.
+    expect(owed(fixtures.WA_PROGRAM_PROPERTY_CHARITY)).not.toContain(TRUST);
+  });
+
+  it("registers the same organisation once it is endowed", () => {
+    // Identical but for $310,000 invested. Without this pair, "does not
+    // register" would be satisfied by a rule that never fires at all — and the
+    // program property is UNCHANGED between the two, so the only thing this can
+    // be measuring is the invested figure.
+    const dormant = fixtures.WA_PROGRAM_PROPERTY_CHARITY;
+    const endowed = fixtures.WA_PROGRAM_PROPERTY_CHARITY_WITH_ENDOWMENT;
+    expect(endowed.charitableAssetsMinorUnits).toBeGreaterThan(
+      dormant.charitableAssetsMinorUnits!,
+    );
+    expect(owed(dormant)).not.toContain(TRUST);
+    expect(owed(endowed)).toContain(TRUST);
+  });
+
+  it("asks for the narrow figure from an entity that gave only the broad one", () => {
+    // The self-hoster who answered this form before 2026-09-09. Their broad
+    // answer is NOT reused as the narrow one — the two differ for exactly the
+    // organisations the distinction was drawn for — so the rule is undecided
+    // and says which figure it needs.
+    const result = evaluate(fixtures.WA_CHARITY_BROAD_ASSETS_ONLY, RULES, {
+      asOf: "2026-01-01",
+      horizonMonths: 12,
+      includeDraft: true,
+    });
+    expect(result.obligations.map((o) => o.ruleId)).not.toContain(TRUST);
+    expect(
+      result.indeterminate.find((r) => r.ruleId === TRUST)?.missingFacts,
+    ).toEqual(["incomeProducingCharitableAssetsMinorUnits"]);
+  });
+
+  it("no longer keys on charitableAssetsMinorUnits anywhere in the pack", () => {
+    // The fact keeps its meaning and stays in the model for other
+    // jurisdictions, but nothing in the SHIPPED pack tests it after this
+    // change. Asserted so that a future rule reaching for the wider fact where
+    // a statute names the narrower one is a deliberate act with a failing test
+    // to argue with, rather than a copy-paste.
+    const conditionsOf = (rule: Rule) =>
+      (rule.conditions ?? []).flatMap((node) =>
+        "anyOf" in node ? node.anyOf : [node],
+      );
+    const usingBroad = RULES.filter((rule) =>
+      conditionsOf(rule).some((c) => c.fact === "charitableAssetsMinorUnits"),
+    ).map((rule) => rule.id);
+    expect(usingBroad).toEqual([]);
+    // Non-vacuity for the sweep itself: it must be able to SEE the narrow fact,
+    // or an empty result says nothing about the broad one.
+    const usingNarrow = RULES.filter((rule) =>
+      conditionsOf(rule).some(
+        (c) => c.fact === "incomeProducingCharitableAssetsMinorUnits",
+      ),
+    ).map((rule) => rule.id);
+    expect(usingNarrow).toEqual([TRUST]);
   });
 });

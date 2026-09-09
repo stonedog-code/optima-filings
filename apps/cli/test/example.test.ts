@@ -75,6 +75,36 @@ describe("the shipped CLI example", () => {
     expect(federal.length).toBe(1);
   });
 
+  it("leaves no WASHINGTON rule undecided either", () => {
+    // The same rot-guard as the federal one above, extended to the state pack
+    // on 2026-09-09 because that is when it first had teeth: the two WA charity
+    // rules gained four facts with no default (NEH-413), and an example that
+    // did not answer them would demonstrate three "cannot tell yet" rows to
+    // somebody running this repo for the first time.
+    //
+    // Stated as "none undecided" rather than as a list of expected rule ids, so
+    // the NEXT fact with no default fails here rather than silently emptying
+    // the example again.
+    expect(
+      result.indeterminate
+        .filter((r) => r.jurisdiction === "US-WA")
+        .map((r) => r.ruleId),
+    ).toEqual([]);
+  });
+
+  it("still demonstrates the WA charity registration, and shows why", () => {
+    // The example raises $38,000 — UNDER the RCW 19.09.081(1) exemption's
+    // $50,000 line — and registers anyway, because it pays a part-time
+    // coordinator and the exemption is a conjunction. That is the more
+    // instructive demonstration than a charity that is simply too big, and it
+    // is the reason the example's `allFundraisingUnpaid` is false rather than
+    // absent.
+    expect(example.contributionsRaisedMinorUnits).toBeLessThan(5_000_000);
+    expect(result.obligations.map((o) => o.ruleId)).toContain(
+      "us-wa-charitable-solicitation-registration",
+    );
+  });
+
   it("owes its state annual report as well", () => {
     // The example carries `nonprofit-corp` alongside `501c3` deliberately —
     // state and federal rules key off different forms — and an example that

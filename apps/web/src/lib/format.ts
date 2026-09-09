@@ -182,6 +182,15 @@ export const CONDITIONABLE_FACT_LABELS: Record<ConditionableFact, string> = {
   solicitsCharitableContributions: "whether you ask the public for donations",
   isPrivateFoundation: "whether you are a private foundation",
   isSupportingOrganization: "whether you are a 509(a)(3) supporting organisation",
+  // Worded to make the distinction from gross revenue audible, because the two
+  // questions sound identical read quickly and a reader who answers this with
+  // their total revenue loses the exemption it exists to grant.
+  contributionsRaisedMinorUnits: "how much you raised in donations",
+  allFundraisingUnpaid: "whether all your work, fundraising included, is done by unpaid volunteers",
+  assetsOrIncomeInureToInsiders:
+    "whether any of your money or property goes to an officer, director, member or trustee",
+  incomeProducingCharitableAssetsMinorUnits:
+    "how much of your charitable assets is invested to produce income",
   // Derived, so nobody can answer it directly — the evaluator reports the input
   // that would decide it instead, and this label exists so a rule that ever
   // does surface the derived name still reads as English.

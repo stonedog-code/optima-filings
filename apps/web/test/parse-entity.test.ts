@@ -331,3 +331,69 @@ describe("parseTriState", () => {
     },
   );
 });
+
+/**
+ * The four fields added for the two Washington charity rules (NEH-413).
+ *
+ * Two of them are money and two are tri-state, and the tri-state pair is the
+ * interesting half: unlike `solicits`, where an unticked box is honestly "no",
+ * BOTH readings of an unanswered volunteer question are wrong. Read as "no",
+ * the RCW 19.09.081(1) exemption is denied to every organisation that has not
+ * been asked — the over-filing it exists to remove. Read as "yes", it is
+ * granted to them, which is under-filing.
+ */
+describe("the Washington charity-exemption fields", () => {
+  const parsed = (fields: Record<string, string | string[]>) => {
+    const result = parseEntityForm(form({ ...valid, ...fields }));
+    if (!result.ok) throw new Error(`did not parse: ${result.error}`);
+    return result.facts;
+  };
+
+  it("reads contributions raised as its own figure, not as gross revenue", () => {
+    // The distinction the fact exists for. A theatre with $500,000 of ticket
+    // sales and $12,000 of donations has raised $12,000, and testing the wrong
+    // one of these against the $50,000 line denies it the exemption.
+    const facts = parsed({ grossRevenue: "500000", contributionsRaised: "12000" });
+    expect(facts.grossRevenueMinorUnits).toBe(50_000_000);
+    expect(facts.contributionsRaisedMinorUnits).toBe(1_200_000);
+  });
+
+  it("reads invested charitable assets as its own figure, not as charitable assets", () => {
+    const facts = parsed({
+      charitableAssets: "4150000",
+      incomeProducingCharitableAssets: "310000",
+    });
+    expect(facts.charitableAssetsMinorUnits).toBe(415_000_000);
+    expect(facts.incomeProducingCharitableAssetsMinorUnits).toBe(31_000_000);
+  });
+
+  it("omits an unfilled money field rather than storing zero", () => {
+    // A 0 raised is BELOW the $50,000 line, so it is an answer that helps grant
+    // the exemption. An absent key leaves the rule undecided and asks.
+    const facts = parsed({});
+    expect("contributionsRaisedMinorUnits" in facts).toBe(false);
+    expect("incomeProducingCharitableAssetsMinorUnits" in facts).toBe(false);
+  });
+
+  it("keeps a real zero the user typed", () => {
+    const facts = parsed({
+      contributionsRaised: "0",
+      incomeProducingCharitableAssets: "0",
+    });
+    expect(facts.contributionsRaisedMinorUnits).toBe(0);
+    expect(facts.incomeProducingCharitableAssetsMinorUnits).toBe(0);
+  });
+
+  it.each([
+    ["allFundraisingUnpaid", "allFundraisingUnpaid"],
+    ["assetsOrIncomeInureToInsiders", "assetsOrIncomeInureToInsiders"],
+  ] as const)("keeps %s as three states", (field, key) => {
+    expect(parsed({ [field]: "yes" })[key]).toBe(true);
+    expect(parsed({ [field]: "no" })[key]).toBe(false);
+    // Unanswered must be an ABSENT KEY, not `false` — the engine tests
+    // `=== undefined`, and a `false` here is a firm legal claim we have no
+    // evidence for.
+    expect(key in parsed({})).toBe(false);
+    expect(key in parsed({ [field]: "" })).toBe(false);
+  });
+});
