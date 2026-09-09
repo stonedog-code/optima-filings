@@ -72,6 +72,11 @@ overrides — export `OPTIMA_DB_PATH` or `OPTIMA_INCLUDE_DRAFT` and you get what
 you asked for. To run the real self-host artefact instead, see
 [`docker/README.md`](docker/README.md).
 
+A rule does not have to be in this repository to show up. `OPTIMA_RULES_DIR`
+names a directory of rule JSON that a running install loads alongside the
+shipped packs, re-read on every page load — see
+[Adding your own rules](docker/README.md#adding-your-own-rules).
+
 ```bash
 npm run gate          # validate rules, typecheck, lint, test
 npm run test:e2e      # the browser journey, against a production build

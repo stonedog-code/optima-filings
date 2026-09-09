@@ -201,6 +201,36 @@ adding a rule, and `rules:barrel:check` in the gate fails when it is stale, so a
 rule added without regenerating is caught at merge rather than going silently
 missing from everyone's calendar.
 
+### `OPTIMA_RULES_DIR` — rules an INSTALL owns, not the repo (NEH-1255)
+
+The barrel is a build-time artefact, so for a long time there was **no way to
+put a rule into a running install at all**: a self-hoster whose county wants a
+filing, or a contributor drafting one, had to rebuild the image to see it. A
+product that asks people to contribute rules and gives them nowhere to put one
+is asking for a pull request as the first step rather than the last.
+
+`apps/web/src/lib/local-rules.ts` loads every `.json` under the directory
+`OPTIMA_RULES_DIR` names, at any depth, and merges it with `ALL_RULES`. Four
+things about it are decisions:
+
+- **The same schema and the same Ajv options as `rules:validate`**, so a file
+  that passes the contributor gate passes in an install and vice versa. That is
+  why `ajv` is a **runtime** dependency of `apps/web`.
+- **Every failure throws.** A missing directory, a file that is not JSON, a rule
+  the schema rejects, an id a shipped rule already uses. A rule file skipped
+  quietly is this repo's named failure mode: a calendar that renders, looks
+  complete, and is missing a filing.
+- **The directory is read on every call, not cached.** Someone authoring a rule
+  edits and reloads. `allCalendars` resolves it once per request and passes it
+  down, so it is one read per page rather than one per entity.
+- **Read straight from `process.env`, NOT through `renamedEnv`.** That helper
+  carries a pre-rename `MAXIMUS_*` spelling forward; this variable never had
+  one, and routing it through would invent a legacy name and promise to honour
+  it.
+
+The CLI still evaluates against `ALL_RULES` only. It is unpublished and runs
+from a checkout, where a rule goes in `packages/rules/us/`.
+
 ### `status`: draft vs active
 
 **`draft` is not a lesser form of `active` to be tidied up later.** It is the
@@ -292,7 +322,7 @@ mobile), covering the Milestone 1 journey: add an entity → obligations render
 with real dates → citations present → the disclaimer is visible → draft rules
 are marked unverified → both exports work.
 
-Four things about it that are decisions rather than accidents:
+Five things about it that are decisions rather than accidents:
 
 - **It runs the PRODUCTION build** (`next build && next start`), not `next dev`.
   The hosted tier's harness cannot — its verification-email link is only printed
@@ -302,20 +332,35 @@ Four things about it that are decisions rather than accidents:
   is public so branch protection works; the hosted repo's cannot block at all
   (NEH-351), which is why only this one is wired in.
 - **Drafts are switched ON** (`OPTIMA_INCLUDE_DRAFT=true`), and since NEH-1255
-  the suite asserts the banner is **absent**. The flag lets a draft through; it
-  is not evidence that one came through, and conflating the two is what had the
-  app telling a `npm run dev` contributor that unverified rules were on screen
-  when every row was verified. `hasDraftItems` now decides, from the calendar
-  rather than the environment.
-- **The positive case cannot be reached from a browser, and that is why
-  `hasDraftItems` is exported.** No supported mechanism puts a `draft` rule into
-  a running install — no local-pack directory, no injection point — so a browser
-  only ever sees the negative. `apps/web/test/draftBanner.test.ts` covers the
-  true case against a hand-built calendar, one assertion per bucket, with a
-  non-vacuity check that the fixtures hold items. **The per-row badge itself is
-  still uncovered**: it needs a component tier this repo does not have
-  (`testEnvironment: "node"`, no testing-library) or a way to load a local pack
-  (NEH-1255).
+  the main server asserts the banner is **absent**. The flag lets a draft
+  through; it is not evidence that one came through, and conflating the two is
+  what had the app telling a `npm run dev` contributor that unverified rules
+  were on screen when every row was verified. `hasDraftItems` now decides, from
+  the calendar rather than the environment.
+- **TWO servers, because the shipped pack is entirely `active`.** This entry
+  used to say the positive case could not be reached from a browser — there was
+  no supported way to put a `draft` rule into a running install. `OPTIMA_RULES_DIR`
+  is that way now (`apps/web/src/lib/local-rules.ts`), and it is what makes the
+  banner's true case and the per-row badge testable at all.
+
+  A draft on the calendar is exactly what the "does NOT cry wolf" test asserts
+  the absence of, and the banner is page-global, so one server cannot hold both
+  facts. The config starts a **second** `next start` on 3201, same build, with
+  `OPTIMA_RULES_DIR` pointing at two fake rules in `e2e/fixtures/extra-rules`;
+  the `draft-rules` project runs `draft-rule.spec.ts` against it. Playwright
+  starts `webServer` entries sequentially, so the second needs no build of its
+  own — and must not have one, or two `next build`s race on one `.next`.
+
+  **Never promote a shipped rule back to `draft` to give a test something to
+  look at.** That marks a filing somebody has checked as unverified, in the
+  product, to make a suite green.
+
+  The badge assertions are scoped to the `listitem` — `getByText(/unverified/i)`
+  would be satisfied by the page-wide banner and prove nothing about the row —
+  and each is paired with the opposite claim about a verified row on the same
+  page. `apps/web/test/draftBanner.test.ts` is kept alongside: it enumerates the
+  cases (a draft hiding in each bucket, an indeterminate draft with no date),
+  which end to end would cost a fixture and a page load apiece.
 - **A throwaway SQLite file per run**, never the default `/data/optima.sqlite`,
   which is where a self-hoster's volume is mounted.
 

@@ -194,6 +194,11 @@ test.describe("the self-host journey", () => {
     // The rows assertion is what stops this passing over an empty page: an app
     // that rendered nothing at all would also show no banner, and would be a
     // worse bug than the one being fixed.
+    //
+    // The POSITIVE half lives in `draft-rule.spec.ts`, against the second
+    // server: a draft rule has to come from `OPTIMA_RULES_DIR`, because the
+    // shipped pack is entirely `active` and promoting one back to `draft` to
+    // give a test something to look at would mark a checked filing unverified.
     await page.goto("/");
     await expect(
       page.getByText(/Nonprofit Corporation Annual Report/i).first(),

@@ -6,21 +6,30 @@ import { StyledUnverified } from "@optima-compliance/ui";
 import { css } from "styled-system/css";
 
 /**
- * Shown whenever unverified rules are switched ON — on the flag alone, not on
- * any row actually being draft.
+ * Shown when the calendar actually HOLDS an unverified rule — on the data, not
+ * on the flag.
  *
- * That was the same thing when this was written: the whole seeded set was
- * `draft`, so opting in always did show unverified rows, and someone who had
- * opted in needed it stated plainly and repeatedly, because the rows look
- * exactly as authoritative as verified ones.
+ * The condition lives in `lib/calendar.ts` as `hasDraftItems`, exported and
+ * pure so it can be asserted without rendering a page, and it counts both dated
+ * obligations and the indeterminate rules in "Cannot tell yet": one of those is
+ * no more verified for having no date.
  *
- * Since pack `2026.8.6` the shipped set is entirely `active`, so the two have
- * come apart, and `npm run dev` sets the flag — which means a contributor with
- * no draft rules of their own is told unverified rules are being shown when
- * none are. Crying wolf on an honesty surface is how the honesty surface stops
- * being read. The fix is to condition this on the evaluation actually
- * containing a draft obligation, which also gives the per-row badge something
- * to assert: NEH-1255.
+ * ## Why it is worth saying that it is the data
+ *
+ * This rendered on `includeDraft()` — the FLAG — until NEH-1255, and while the
+ * whole seeded set was `draft` the two were the same statement: opting in
+ * always did put unverified rows on screen. Since pack `2026.8.6` the shipped
+ * set is entirely `active` and `npm run dev` sets the flag, so a contributor
+ * with no draft rules of their own was told "Unverified rules are being shown"
+ * with every row on the page verified.
+ *
+ * Crying wolf on an honesty surface is how the honesty surface stops being
+ * read, and on a compliance product that surface is load-bearing.
+ *
+ * Both directions are asserted in a browser now that `OPTIMA_RULES_DIR` can put
+ * a draft rule into a running install: `e2e/draft-rule.spec.ts` renders one and
+ * expects this, and `e2e/calendar.spec.ts` expects its absence over a page of
+ * verified rows.
  */
 export function DraftBanner() {
   return (

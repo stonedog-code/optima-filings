@@ -18,6 +18,7 @@
     "prepare:packages": "tsc --build ../../tsconfig.json",
     "//prepare:packages": "engine/rules/db/export declare main:./dist, so they must be COMPILED before Next resolves them. ui and @stonedogcode/style are the opposite \u2014 they ship source and are transpiled by Next."
   },
+  "//ajv": "A RUNTIME dependency, not a dev one: OPTIMA_RULES_DIR validates the operator's own rule files against packages/rules/schema/rule.v1.json on the running server (NEH-1255), with the same Ajv options as packages/rules/scripts/validate.mjs so a file that passes the contributor gate passes in an install and vice versa.",
   "dependencies": {
     "@optima-compliance/db": "0.1.0",
     "@optima-compliance/engine": "0.7.0",
@@ -25,6 +26,8 @@
     "@optima-compliance/reminders": "0.1.0",
     "@optima-compliance/rules": "2026.9.0",
     "@optima-compliance/ui": "0.1.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

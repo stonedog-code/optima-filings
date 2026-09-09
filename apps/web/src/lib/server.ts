@@ -14,8 +14,8 @@ import "server-only";
  */
 
 import { EntityStore, type StoredEntity } from "@optima-compliance/db";
-import { evaluate, type EvaluationResult } from "@optima-compliance/engine";
-import { ALL_RULES } from "@optima-compliance/rules";
+import { evaluate, type EvaluationResult, type Rule } from "@optima-compliance/engine";
+import { allRules } from "./local-rules";
 import { adoptLegacyDatabase, renamedEnv } from "./upgrade";
 
 /**
@@ -73,7 +73,8 @@ export function today(): string {
  * It mattered more than it does. When the whole seed set was `draft`, off meant
  * an empty calendar for anyone who had not opted in — the honest answer, not a
  * bug. Since pack `2026.8.6` the shipped set is entirely `active`, so this flag
- * only affects rules the operator added themselves.
+ * only affects rules the operator added themselves — which they do through
+ * `OPTIMA_RULES_DIR`; see `local-rules.ts`.
  */
 export function includeDraft(): boolean {
   return renamedEnv("INCLUDE_DRAFT") === "true";
@@ -84,14 +85,23 @@ export interface EntityCalendar {
   result: EvaluationResult;
 }
 
+/**
+ * `rules` is a parameter so a page with several entities resolves the pack ONCE.
+ *
+ * `allRules()` reads `OPTIMA_RULES_DIR` off the disk on every call (see
+ * `local-rules.ts` — that is what lets a rule author edit a file and reload
+ * rather than restart). Calling it per entity would turn one directory read
+ * into one per row, and the default keeps every existing caller correct.
+ */
 export function calendarFor(
   entity: StoredEntity,
   asOf: string,
   horizonMonths = 12,
+  rules: readonly Rule[] = allRules(),
 ): EntityCalendar {
   return {
     entity,
-    result: evaluate(entity, ALL_RULES, {
+    result: evaluate(entity, rules, {
       asOf,
       horizonMonths,
       includeDraft: includeDraft(),
@@ -101,7 +111,8 @@ export function calendarFor(
 
 /** Every entity's calendar, for the overview. */
 export function allCalendars(asOf: string, horizonMonths = 12): EntityCalendar[] {
+  const rules = allRules();
   return getStore()
     .list()
-    .map((entity) => calendarFor(entity, asOf, horizonMonths));
+    .map((entity) => calendarFor(entity, asOf, horizonMonths, rules));
 }

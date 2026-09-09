@@ -1,0 +1,14 @@
+{
+  "$schema": "../../../../../packages/rules/schema/rule.v1.json",
+  "id": "us-wa-example-fixture-draft-filing",
+  "jurisdiction": "US-WA",
+  "title": "Example Fixture Draft Filing",
+  "agency": "Example Fixture Agency",
+  "entityTypes": ["nonprofit-corp"],
+  "cadence": { "type": "annual", "anchor": "calendar", "month": 6, "day": 30 },
+  "citation": "Example Fixture Code 1.02.030",
+  "lastVerified": "2026-01-01",
+  "status": "draft",
+  "effectiveFrom": "2020-01-01",
+  "notes": "A FAKE rule. Exists only so the E2E suite has an unverified row to point at; see the README beside it."
+}
