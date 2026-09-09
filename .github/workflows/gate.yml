@@ -68,8 +68,12 @@ jobs:
       # rather than WebKit — see the config for why — so a second browser
       # would be downloaded and never launched.
       - run: npx playwright install --with-deps chromium
-      # Builds the app first (the config's `webServer` runs `next build &&
+      # Builds the app first (the config's first `webServer` runs `next build &&
       # next start`), so this exercises the PRODUCTION build, not a dev server.
+      # A SECOND server follows on 3201 with `OPTIMA_RULES_DIR` set — the only
+      # way to get a `draft` rule in front of a browser now that the shipped
+      # pack is entirely `active` (NEH-1255). It reuses the first's build, so
+      # this step still pays for exactly one `next build`.
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         # Only on failure: traces and screenshots are large, and a green run

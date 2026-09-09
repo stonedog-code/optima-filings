@@ -4,22 +4,23 @@
  * Copyright (C) 2026 StoneDogCode L.L.C.
  * SPDX-License-Identifier: AGPL-3.0-only
  *
- * ## Why this tier and not a browser test
+ * ## Why this tier as well as a browser test
  *
- * The condition cannot be exercised end to end. Every rule in the shipped pack
- * has been `status: "active"` since `2026.8.6`, and there is no supported way
- * to put a draft rule into a running install — no local-pack directory, no
- * injection point. So a browser can only ever see the negative case, which is
- * exactly the regression this fixes and is asserted in `calendar.spec.ts`.
+ * This file was written when the condition could not be exercised end to end.
+ * Every rule in the shipped pack has been `status: "active"` since `2026.8.6`,
+ * and there was **no supported way to put a draft rule into a running install**
+ * — no local-pack directory, no injection point — so a browser could only ever
+ * see the negative case.
  *
- * The positive case — a draft IS present, so the banner must appear — lives
- * here, against a hand-built calendar. That is why `hasDraftItems` is a pure
- * exported function rather than an expression inline in the page: a condition
- * with no way to construct its true case is a condition nothing can check.
+ * `OPTIMA_RULES_DIR` closed that gap, and `e2e/draft-rule.spec.ts` now renders
+ * a draft rule and asserts both the banner and the per-row badge in a browser.
+ * This tier is kept rather than replaced: it enumerates the CASES — a draft
+ * hiding in each of the four buckets, an indeterminate draft with no date — and
+ * doing that end to end would need a rule fixture and a page load apiece.
  *
- * The per-row badge itself is still uncovered; it needs either a component
- * tier (this repo has none — `testEnvironment: "node"`, no testing-library) or
- * a way to load a local rule pack. NEH-1255 stays open for that.
+ * That is still why `hasDraftItems` is a pure exported function rather than an
+ * expression inline in the page: a condition with no way to construct its true
+ * case is a condition nothing can check.
  */
 
 import { hasDraftItems } from "../src/lib/calendar";

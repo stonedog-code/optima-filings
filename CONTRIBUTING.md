@@ -38,6 +38,21 @@ To see your rule in the dashboard, `npm run dev` and open
 `data/` inside the checkout and shows draft rules, which is what makes a rule
 you just wrote visible.
 
+**You do not need a checkout to write a rule.** A running install loads rule
+JSON from whatever directory `OPTIMA_RULES_DIR` names, alongside the shipped
+packs and re-read on every page load — so you can write a rule against the
+schema, drop it in, reload, and see whether it produces the date you expected:
+
+```bash
+OPTIMA_RULES_DIR=$PWD/my-rules npm run dev
+```
+
+The same variable works on the Docker image; see
+[Adding your own rules](docker/README.md#adding-your-own-rules). Everything
+below still applies when you come to open the pull request — a rule that works
+in your own install and one the project can ship are the same file, and the
+steps in between are the citation and the fixtures.
+
 1. **Find the right file.** `packages/rules/us/<state>/<slug>.json`, or
    `packages/rules/us/federal/` for federal filings. Rules are organised by
    jurisdiction, not by entity type, because one rule usually covers several

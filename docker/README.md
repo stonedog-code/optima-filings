@@ -39,6 +39,50 @@ To see unverified ones as well:
 Every such row is marked *unverified* in the UI, and a banner says so. Treat
 them as a prompt to go and check the statute, not as fact.
 
+The banner appears when the calendar actually holds an unverified rule, not
+whenever the switch is on — so with the shipped pack, which is entirely
+verified, turning this on changes nothing until you add a rule of your own.
+
+## Adding your own rules
+
+The shipped packs cover a handful of jurisdictions. Yours may not be one of
+them, and waiting for someone else to write your county's filing is not much of
+an answer.
+
+Point `OPTIMA_RULES_DIR` at a directory of rule JSON and every `.json` in it —
+at any depth — is loaded alongside the shipped set:
+
+```bash
+docker run -d \
+  --name optima \
+  -p 3000:3000 \
+  -v optima-data:/data \
+  -v "$PWD/my-rules:/rules:ro" \
+  -e OPTIMA_RULES_DIR=/rules \
+  -e OPTIMA_INCLUDE_DRAFT=true \
+  optima-filings
+```
+
+A rule is one JSON object; the format and every field are documented in
+[the schema](../packages/rules/schema/rule.v1.json), and the fastest way in is
+to copy one of the files under `packages/rules/us/` and change what differs.
+[CONTRIBUTING.md](../CONTRIBUTING.md) walks through the fields that need care.
+Set `status: "draft"` for a rule you have written but not yet checked against
+the statute — that is the honest state, and with `OPTIMA_INCLUDE_DRAFT=true`
+it shows up marked *unverified* rather than silently vanishing.
+
+**The directory is re-read on every page load.** Edit a file, reload the
+calendar, see the change — no restart and no rebuild.
+
+**Nothing is skipped quietly.** A directory that does not exist, a file that is
+not valid JSON, a rule the schema rejects, or an id that a shipped rule already
+uses all stop the page with an error naming the file. A rule file that loaded
+*almost* would give you a calendar that looks complete and is missing a filing,
+which is the one outcome worth failing loudly to avoid.
+
+**Please send it back.** If you wrote a rule for a jurisdiction we do not cover,
+[open a pull request](../CONTRIBUTING.md) — that is how the packs grow.
+
 ## Backing up
 
 **Stop the container first.** On shutdown the app folds its write-ahead log back
@@ -118,6 +162,7 @@ docker run --rm -v maximus-data:/from -v optima-data:/to alpine \
 |---|---|---|
 | `OPTIMA_DB_PATH` | `/data/optima.sqlite` | Where the database file lives |
 | `OPTIMA_INCLUDE_DRAFT` | unset (off) | Show rules not yet verified against a statute |
+| `OPTIMA_RULES_DIR` | unset (none) | A directory of your own rule JSON, loaded alongside the shipped packs |
 | `OPTIMA_DOCUMENTS_DIR` | `documents/` beside the database | Where uploaded files are stored |
 | `PORT` | `3000` | Listen port |
 
