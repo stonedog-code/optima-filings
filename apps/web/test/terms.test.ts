@@ -151,7 +151,10 @@ describe("the page and the footer actually reach it", () => {
     // somebody goes looking would be a link they cannot open.
     const footer = src("components", "site-footer.tsx");
     expect(footer).toContain('href="/terms"');
-    expect(footer).toMatch(/Terms of Use/);
+    // Sentence case, like all interface copy: "Terms of use", not "Terms of
+    // Use". Flipped with the fleet-wide copy-casing rule, which lower-cases
+    // document titles in the interface ("Privacy policy", "Terms of service").
+    expect(footer).toMatch(/Terms of use/);
   });
 
   it("has a fixed effective date, not a derived one", () => {
@@ -169,7 +172,9 @@ describe("the page and the footer actually reach it", () => {
   it("is titled as Terms of Use, not Terms of Service", () => {
     // Not pedantry — NEH-240 settled that this is narrower than a ToS, because
     // there is no service. The title is the first thing that would drift back.
-    expect(TERMS_TITLE).toBe("Terms of Use");
+    // Written in sentence case since the fleet-wide copy-casing rule (the
+    // assertion used to pin "Terms of Use"); the word that matters is "use".
+    expect(TERMS_TITLE).toBe("Terms of use");
     expect(allText).not.toMatch(/terms of service/i);
   });
 });

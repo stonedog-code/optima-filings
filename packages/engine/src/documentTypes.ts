@@ -87,7 +87,7 @@ export const DOCUMENT_TYPE_INFO: Readonly<
 > = {
   MEETING_MINUTES: {
     value: "MEETING_MINUTES",
-    label: "Meeting Minutes",
+    label: "Meeting minutes",
     describes:
       "Board and member meeting minutes, and resolutions adopted at a meeting.",
     // The meeting is the date that matters. Minutes from March uploaded in
@@ -97,7 +97,7 @@ export const DOCUMENT_TYPE_INFO: Readonly<
   },
   DOCUMENT_OF_RECORD: {
     value: "DOCUMENT_OF_RECORD",
-    label: "Documents of Record",
+    label: "Documents of record",
     describes:
       "Business license, EIN letter, 501(c)(3) determination letter, articles of incorporation, bylaws.",
     // A determination letter is a standing fact, not an event. It has an issue
@@ -107,7 +107,7 @@ export const DOCUMENT_TYPE_INFO: Readonly<
   },
   FILING_RECEIPT: {
     value: "FILING_RECEIPT",
-    label: "Filing Receipts",
+    label: "Filing receipts",
     describes:
       "Proof a filing was made — annual report confirmation, a stamped return, a payment receipt.",
     // The evidence half of every obligation the engine derives, and the date of
@@ -116,7 +116,7 @@ export const DOCUMENT_TYPE_INFO: Readonly<
   },
   CORRESPONDENCE: {
     value: "CORRESPONDENCE",
-    label: "Agency Correspondence",
+    label: "Agency correspondence",
     describes:
       "Letters from the IRS, a Secretary of State, or a revenue department — including the ones that carry a deadline.",
     // Where an agency-imposed deadline actually arrives, which makes this the

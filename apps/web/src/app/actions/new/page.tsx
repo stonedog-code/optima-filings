@@ -62,7 +62,7 @@ export default async function NewActionPage({
             id="action-title"
             name="title"
             list="action-suggestions"
-            placeholder="File an Annual Report"
+            placeholder="File an annual report"
             required
             autoFocus
             aria-describedby="action-title-hint"

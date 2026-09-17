@@ -81,7 +81,7 @@ export function SiteFooter() {
         somebody goes looking for belongs where documents are kept.
       */}
       <span>
-        <a href="/terms">Terms of Use</a>
+        <a href="/terms">Terms of use</a>
       </span>
     </footer>
   );

@@ -15,7 +15,7 @@ import { css } from "styled-system/css";
  * list lives in one place rather than being inlined in the form.
  */
 export const ACTION_SUGGESTIONS = [
-  "File an Annual Report",
+  "File an annual report",
   "Renew charity registration",
   "File Form 990",
   "Renew business licence",
