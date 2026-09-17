@@ -56,7 +56,7 @@ export interface TermsSection {
 
 export const TERMS_EFFECTIVE_DATE = "2026-08-12";
 
-export const TERMS_TITLE = "Terms of Use";
+export const TERMS_TITLE = "Terms of use";
 
 /**
  * The one-line summary, shown before the sections.

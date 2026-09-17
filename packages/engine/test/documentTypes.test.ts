@@ -115,7 +115,7 @@ describe("isDocumentType — the guard that keeps the list closed", () => {
   it.each([
     ["an unknown string", "INVOICE"],
     ["the lowercase form", "meeting_minutes"],
-    ["a label rather than a value", "Meeting Minutes"],
+    ["a label rather than a value", "Meeting minutes"],
     ["an empty string", ""],
     ["a whitespace-padded value", " OTHER "],
   ])("rejects %s", (_label, value) => {

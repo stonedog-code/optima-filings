@@ -161,7 +161,7 @@ export default async function NewDocumentPage({
             id="doc-fields"
             name="fields"
             rows={4}
-            placeholder={"UBI Number: 604 123 456\nEIN: 91-1234567\nDUNS: 123456789"}
+            placeholder={"UBI number: 604 123 456\nEIN: 91-1234567\nDUNS: 123456789"}
             aria-describedby="doc-fields-hint"
           />
           <span className={hintClass} id="doc-fields-hint">
@@ -199,7 +199,7 @@ export default async function NewDocumentPage({
               id="doc-action-title"
               name="actionTitle"
               list="action-suggestions"
-              placeholder="File an Annual Report"
+              placeholder="File an annual report"
             />
             <ActionSuggestions />
           </div>
